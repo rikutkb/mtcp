@@ -38,6 +38,7 @@ struct mtcp_conf
 
 	int tcp_timewait;
 	int tcp_timeout;
+	int syn_cookie;
 };
 
 typedef struct mtcp_context *mctx_t;
