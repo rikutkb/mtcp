@@ -1217,6 +1217,8 @@ ProcessTCPPacket(mtcp_manager_t mtcp,
 	int ret;
 	int rc = -1;
 
+
+
 	/* Check ip packet invalidation */	
 	if (ip_len < ((iph->ihl + tcph->doff) << 2))
 		return ERROR;
@@ -1248,7 +1250,9 @@ ProcessTCPPacket(mtcp_manager_t mtcp,
 	s_stream.sport = tcph->dest;
 	s_stream.daddr = iph->saddr;
 	s_stream.dport = tcph->source;
+	//if syn cookie 
 
+	//if normal tcp
 	if (!(cur_stream = StreamHTSearch(mtcp->tcp_flow_table, &s_stream))) {
 		/* not found in flow table */
 		cur_stream = CreateNewFlowHTEntry(mtcp, cur_ts, iph, ip_len, tcph, 
