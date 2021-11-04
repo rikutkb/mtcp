@@ -12,17 +12,41 @@
 #include "timer.h"
 #include "ip_in.h"
 #include "clock.h"
+#include "siphash.h"
 #include "tcp_syncookie.h"
 #if USE_CCP
 #include "ccp.h"
 #endif
+static siphash_key_t syncookie_secret[2];//readmostlyにする
+#define COOKIEBITS 24	/* Upper bits store count */
+#define COOKIEMASK (((uint32_5)1 << COOKIEBITS) - 1)
 
+
+//tcp.h
+static uint32_t tcp_cookie_time(void){
+    uint64_t val = get_jiffies_64();
+    //do_div(val,TCP_SYNCOOKIE_PERIOD);
+    return val;
+}
+
+//tcp.h
 static uint32_t cookie_hash(uint32_t saddr, uint32_t daddr, uint16_t sport, uint16_t dport, uint32_t count, int c){
-    
+    return siphash_4u32(saddr,daddr,sport<<16|dport,count,&syncookie_secret[c]);
 }
 
 uint64_t cookie_init_timestamp(uint64_t now){
 
+}
+
+
+static uint32_t check_tcp_syn_cookie(uint32_t cookie, uint32_t saddr, uint32_t daddr, uint16_t sport, uint16_t dport,uint32_t sseq){
+    uint32_t diff, count = tcp_cookie_time();
+    cookie -= cookie_hash(saddr,daddr,sport,dport,0,0)+ sseq;
+    diff = (count -(cookie >> COOKIEBITS)) & ((uint32_t)-1 >>COOKIEBITS);
+    if(diff >=MAX_SYNCOOKIE_AGE){
+        return (uint32_t)-1;
+    }
+    returnn (cookie - cookie_hash(saddr,daddr,sport,dport,count-diff,1)& COOKIEMASK);
 }
 void 
 ParseSYNTCPOptions(tcp_stream *cur_stream, 
