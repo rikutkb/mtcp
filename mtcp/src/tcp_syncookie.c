@@ -46,7 +46,7 @@ static uint32_t check_tcp_syn_cookie(uint32_t cookie, uint32_t saddr, uint32_t d
     if(diff >=MAX_SYNCOOKIE_AGE){
         return (uint32_t)-1;
     }
-    returnn (cookie - cookie_hash(saddr,daddr,sport,dport,count-diff,1)& COOKIEMASK);
+    return (cookie - cookie_hash(saddr,daddr,sport,dport,count-diff,1)& COOKIEMASK);
 }
 void 
 ParseSYNTCPOptions(tcp_stream *cur_stream, 

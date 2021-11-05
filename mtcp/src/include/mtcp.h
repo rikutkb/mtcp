@@ -226,6 +226,9 @@ struct mtcp_manager
 #if USE_CCP
 	struct hashtable *tcp_sid_table;
 #endif
+#if SYN_COOKIE
+	struct hashtable *white_list;
+#endif
 
 	uint32_t s_index:24;		/* stream index */
 	socket_map_t smap;

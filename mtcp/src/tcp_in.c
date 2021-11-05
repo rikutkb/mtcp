@@ -1251,12 +1251,36 @@ ProcessTCPPacket(mtcp_manager_t mtcp,
 	s_stream.daddr = iph->saddr;
 	s_stream.dport = tcph->source;
 	//if syn cookie 
+	#if TCP_SYN_COOKIE
+		//search in white list
+		/*if(searchWhiteList(s_stream.saddr)){
+			//normal tcp process
+		}else{
+			switch  state:
+				case ack:
+					if(cal_hash(s_stream)){
+						add_whitelist(ip);
+						normalprcess();
+					}else{
+						send_reset();
+					}
+				case syn:
+					seq = cal_hash(s_stream);
+					send_syn_ack(seq);
 
+
+		}
+		*/
+
+	#endif
 	//if normal tcp
 	if (!(cur_stream = StreamHTSearch(mtcp->tcp_flow_table, &s_stream))) {
 		/* not found in flow table */
 		cur_stream = CreateNewFlowHTEntry(mtcp, cur_ts, iph, ip_len, tcph, 
 				seq, ack_seq, payloadlen, window);
+		//if syn_cokie
+			//cal_statistics(payloadlen)
+
 		if (!cur_stream)
 			return TRUE;
 	}
