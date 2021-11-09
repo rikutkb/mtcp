@@ -1260,10 +1260,13 @@ ProcessTCPPacket(mtcp_manager_t mtcp,
 		if(searchWhiteList(mtcp->white_list,&s_stream.saddr)){
 			//normal tcp process
 		}else{
+
+			//not found in list
 			switch  state:
 				case ack:
 					if(cal_hash(s_stream)){
 						add_whitelist(ip);
+					create stream and makeestablished
 						normalprcess();
 					}else{
 						send_reset();
