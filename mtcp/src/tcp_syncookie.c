@@ -14,9 +14,7 @@
 #include "clock.h"
 #include "siphash.h"
 #include "tcp_syncookie.h"
-#if USE_CCP
-#include "ccp.h"
-#endif
+
 static siphash_key_t syncookie_secret[2];//readmostlyにする
 #define COOKIEBITS 24	/* Upper bits store count */
 #define COOKIEMASK (((uint32_5)1 << COOKIEBITS) - 1)
@@ -38,6 +36,9 @@ uint64_t cookie_init_timestamp(uint64_t now){
 
 }
 
+void get_statistics(mtcp_manager mtcp){
+
+}
 
 static uint32_t check_tcp_syn_cookie(uint32_t cookie, uint32_t saddr, uint32_t daddr, uint16_t sport, uint16_t dport,uint32_t sseq){
     uint32_t diff, count = tcp_cookie_time();

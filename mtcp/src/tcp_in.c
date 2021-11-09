@@ -1253,7 +1253,11 @@ ProcessTCPPacket(mtcp_manager_t mtcp,
 	//if syn cookie 
 	#if TCP_SYN_COOKIE
 		//search in white list
-		/*if(searchWhiteList(s_stream.saddr)){
+		
+		/*
+
+		if(!)
+		if(searchWhiteList(mtcp->white_list,&s_stream.saddr)){
 			//normal tcp process
 		}else{
 			switch  state:
