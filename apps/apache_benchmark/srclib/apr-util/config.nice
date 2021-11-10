@@ -1,0 +1,15 @@
+#! /bin/sh
+#
+# Created by configure
+
+"/home/riku/mtcp/apps/apache_benchmark/srclib/apr-util/configure" \
+"--disable-option-checking" \
+"--cache-file=/dev/null" \
+"--srcdir=/home/riku/mtcp/apps/apache_benchmark/srclib/apr-util" \
+"--with-apr=../apr" \
+"--prefix=/etc/apache2" \
+"--exec-prefix=/etc/apache2" \
+"--libdir=/etc/apache2/lib" \
+"--includedir=/etc/apache2/include" \
+"--bindir=/etc/apache2/bin" \
+"$@"
