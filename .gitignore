@@ -10,7 +10,7 @@ io_engine/lib/Makefile
 mtcp/src/Makefile
 util/Makefile
 stamp-h1
-
+apps/
 # editors' temporary files
 .vscode/
 
