@@ -1,6 +1,7 @@
 # mtcp-specific files
 Makefile
 autom4te.cache/
+build.sh
 config.h
 config.log
 config.status
@@ -9,7 +10,7 @@ io_engine/lib/Makefile
 mtcp/src/Makefile
 util/Makefile
 stamp-h1
-
+apps/
 # editors' temporary files
 .vscode/
 
