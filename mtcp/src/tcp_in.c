@@ -1251,7 +1251,8 @@ ProcessTCPPacket(mtcp_manager_t mtcp,
 	s_stream.daddr = iph->saddr;
 	s_stream.dport = tcph->source;
 	//if syn cookie 
-	#if TCP_SYN_COOKIE
+	#if defined(USE_SYNCOOKIE)
+	#endif
 		//search in white list
 		
 		/*
