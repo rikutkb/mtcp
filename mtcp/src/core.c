@@ -1521,7 +1521,6 @@ mtcp_getconf(struct mtcp_conf *conf)
 		return -1;
 
 	conf->num_cores = CONFIG.num_cores;
-	conf->syn_cookie = CONFIG.syn_cookie;
 	conf->max_concurrency = CONFIG.max_concurrency;
 
 	conf->max_num_buffers = CONFIG.max_num_buffers;
@@ -1555,10 +1554,6 @@ mtcp_setconf(const struct mtcp_conf *conf)
 		CONFIG.tcp_timewait = conf->tcp_timewait;
 	if (conf->tcp_timeout > 0)
 		CONFIG.tcp_timeout = conf->tcp_timeout;
-	if (conf->syn_cookie > 0){
-		CONFIG.syn_cookie = conf->syn_cookie;
-	}
-
 	TRACE_CONFIG("Configuration updated by mtcp_setconf().\n");
 	//PrintConfiguration();
 

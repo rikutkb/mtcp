@@ -1,5 +1,7 @@
+
 #ifdef SYNCOOKIE_H
 #define SYNCOOKIE_H
+#define USE_SYNCOOKIE true
 
 #include "mtcp.h"
 void 

@@ -37,7 +37,6 @@ struct mtcp_config CONFIG = {
 	.tcp_timeout	  =			TCP_TIMEOUT,
 	.tcp_timewait	  =			TCP_TIMEWAIT,
 	.num_mem_ch	  =			0,
-	.syn_cookie = 1,
 #if USE_CCP
 	.cc           	  =         		"reno\n",
 #endif
@@ -661,9 +660,7 @@ ParseConfiguration(char *line)
         exit(EXIT_FAILURE);
 #endif
 
-    } else if (strcmp(p, "syn_cookie") == 0) {
-		CONFIG.syn_cookie = mystrtol(q, 10);
-	} else {
+    } else {
 		TRACE_CONFIG("Unknown option type: %s\n", line);
 		return -1;
 	}
