@@ -1210,6 +1210,7 @@ ProcessTCPPacket(mtcp_manager_t mtcp,
 	int payloadlen = ip_len - (payload - (u_char *)iph);
 	tcp_stream s_stream;
 	tcp_stream *cur_stream = NULL;
+
 	uint32_t seq = ntohl(tcph->seq);
 	uint32_t ack_seq = ntohl(tcph->ack_seq);
 	uint16_t window = ntohs(tcph->window);
@@ -1251,8 +1252,7 @@ ProcessTCPPacket(mtcp_manager_t mtcp,
 	s_stream.daddr = iph->saddr;
 	s_stream.dport = tcph->source;
 	//if syn cookie 
-	#if defined(USE_SYNCOOKIE)
-	#endif
+
 		//search in white list
 		
 		/*
@@ -1280,10 +1280,33 @@ ProcessTCPPacket(mtcp_manager_t mtcp,
 		}
 		*/
 
-	#endif
 	//if normal tcp
+	#if define(USE_SYNCOOKIE)
+		tcp_stream *ip_stream = NULL;
+		if(!IpHTSearch((mtcp->ip_table,&s_stream)){// no white list
+	
+			if(tcph->syn){
+
+			}else if(tcph->ack){
+				
+			}else{
+
+			}
+		}
+
+	#endif
 	if (!(cur_stream = StreamHTSearch(mtcp->tcp_flow_table, &s_stream))) {
 		/* not found in flow table */
+		// #if defined(USE_SYNCOOKIE)
+		// 	//cal hash
+		// 	//send synack packet
+		// 	if(tcph->syn){
+		// 		//cal 
+		// 	}else if(tcph->ack){
+		// 		//if seq is correct
+		// 	}
+		// 	return;
+		// #else
 		cur_stream = CreateNewFlowHTEntry(mtcp, cur_ts, iph, ip_len, tcph, 
 				seq, ack_seq, payloadlen, window);
 		//if syn_cokie
@@ -1291,6 +1314,7 @@ ProcessTCPPacket(mtcp_manager_t mtcp,
 
 		if (!cur_stream)
 			return TRUE;
+		// #endif
 	}
 
 	/* Validate sequence. if not valid, ignore the packet */

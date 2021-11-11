@@ -72,3 +72,22 @@ uint16_t
 SYNTCPCalcChecksum(uint16_t *buf, uint16_t len, uint32_t saddr, uint32_t daddr){
 
 }
+
+bool IpHTSearch(struct hashtable *ht,const void *it){
+	int idx;
+	const tcp_stream *item = (const tcp_stream *)it;
+	tcp_stream *walk;
+	hash_bucket_head *head;
+
+	idx = ht->hashfn(item);
+
+	head = &ht->ht_table[ht->hashfn(item)];
+	TAILQ_FOREACH(walk, head, rcvvar->he_link) {
+		if(walk->saddr == item->saddr){
+			return true;
+		}
+	}
+
+	UNUSED(idx);
+	return false;
+// }

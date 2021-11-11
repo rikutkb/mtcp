@@ -18,5 +18,8 @@ ProcessSYNTCPPacket(struct mtcp_manager *mtcp, uint32_t cur_ts, const int ifidx,
 uint16_t 
 SYNTCPCalcChecksum(uint16_t *buf, uint16_t len, uint32_t saddr, uint32_t daddr);
 
+bool IpHTSearch(struct hashtable *ht,const void *it);
+
+
 
 #endif
