@@ -32,7 +32,9 @@
 #include "ccp.h"
 #include "libccp/ccp.h"
 #endif
-
+#if define(USE_DDOSPROT)
+#include "statistics.h"
+#endif
 #ifndef DISABLE_DPDK
 /* for launching rte thread */
 #include <rte_launch.h>
@@ -791,8 +793,15 @@ RunMainLoop(struct mtcp_thread_context *ctx)
 
 			for (i = 0; i < recv_cnt; i++) {
 				pktbuf = mtcp->iom->get_rptr(mtcp->ctx, rx_inf, i, &len);
-				if (pktbuf != NULL)
+				if (pktbuf != NULL){
+					#if define(USE_DDOSPROT)
+						struct iphdr* iph = (struct iphdr *)(pkt_data + sizeof(struct ethhdr));
+						if(JudgeDropbyIp(iph->saddr)){
+							continue;
+						}
+					#endif
 					ProcessPacket(mtcp, rx_inf, ts, pktbuf, len);
+				}
 #ifdef NETSTAT
 				else
 					mtcp->nstat.rx_errors[rx_inf]++;
@@ -933,7 +942,13 @@ InitializeMTCPManager(struct mtcp_thread_context* ctx)
 		return NULL;
 	}
 #endif
-
+#if define(USE_DDOSPROT)
+	mtcp->ip_stat_table = CreateHashtable(IPHashFlow, EqualIP, NUM_BINS_FLOWS);
+	if (!mtcp->ip_stat_table) {
+		CTRACE_ERROR("Failed to allocate tcp sid lookup table.\n");
+		return NULL;
+	}
+	#endif
 	mtcp->listeners = CreateHashtable(HashListener, EqualListener, NUM_BINS_LISTENERS);
 	if (!mtcp->listeners) {
 		CTRACE_ERROR("Failed to allocate listener table.\n");

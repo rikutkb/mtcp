@@ -1295,28 +1295,19 @@ ProcessTCPPacket(mtcp_manager_t mtcp,
 		}
 
 	#endif
+
 	if (!(cur_stream = StreamHTSearch(mtcp->tcp_flow_table, &s_stream))) {
 		/* not found in flow table */
-		// #if defined(USE_SYNCOOKIE)
-		// 	//cal hash
-		// 	//send synack packet
-		// 	if(tcph->syn){
-		// 		//cal 
-		// 	}else if(tcph->ack){
-		// 		//if seq is correct
-		// 	}
-		// 	return;
-		// #else
+
 		cur_stream = CreateNewFlowHTEntry(mtcp, cur_ts, iph, ip_len, tcph, 
 				seq, ack_seq, payloadlen, window);
-		//if syn_cokie
-			//cal_statistics(payloadlen)
-
 		if (!cur_stream)
 			return TRUE;
-		// #endif
 	}
-
+	#if define(USE_DDOSPROT)
+		//for established ip
+		AddedPacketStatistics(mtcp->ip_stat_table, iph->s_addr,len);
+	#endif
 	/* Validate sequence. if not valid, ignore the packet */
 	if (cur_stream->state > TCP_ST_SYN_RCVD) {
 		ret = ValidateSequence(mtcp, cur_stream, 

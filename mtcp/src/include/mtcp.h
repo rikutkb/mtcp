@@ -226,8 +226,11 @@ struct mtcp_manager
 #if USE_CCP
 	struct hashtable *tcp_sid_table;
 #endif
-#if SYN_COOKIE
+#if define(USE_SYNCOOKIE)
 	struct hashtable *white_list;
+#endif
+#if define(USE_DDOSPROT)
+	struct hashtable *ip_stat_table;
 #endif
 
 	uint32_t s_index:24;		/* stream index */
