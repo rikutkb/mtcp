@@ -11,12 +11,12 @@ struct ip_statistic
     uint16_t priority;
 
 };
-unsigned int IPHashFlow(const void *saddr);
+bool JudgeDropbyIp(struct hashtable *ht, ip_addr saddr);
 int EqualIP(const void *ip1, const void *ip2);
+unsigned int IPHashFlow(const void *saddr);
 void AddedPacketStatistics(struct hashtable *ht,ip_addr saddr,int ip_len);
 void get_average(struct hashtable *ht);
-void get_statistics(mtcp_manager mtcp);
 void get_dispresion(struct hashtable *ht);
+void get_statistics(mtcp_manager mtcp);
 void update_priority(struct hashtable *ht);
-bool JudgeDropbyIp(struct hashtable *ht, ip_addr saddr);
 #endif
