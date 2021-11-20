@@ -13,10 +13,10 @@ struct ip_statistic
 };
 unsigned int IPHashFlow(const void *saddr);
 int EqualIP(const void *ip1, const void *ip2);
-void AddedPacketStatistics(struct hashtable *ht,iph->s_addr,len);
+void AddedPacketStatistics(struct hashtable *ht,ip_addr saddr,int ip_len);
 void get_average(struct hashtable *ht);
 void get_statistics(mtcp_manager mtcp);
 void get_dispresion(struct hashtable *ht);
 void update_priority(struct hashtable *ht);
-bool JudgeDropbyIp(struct hashtable *ht, u_int32_t s_addr);
+bool JudgeDropbyIp(struct hashtable *ht, ip_addr saddr);
 #endif

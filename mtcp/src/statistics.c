@@ -17,34 +17,17 @@
 
 #include "statistics.h"
 
-void AddedPacketStatistics(struct hashtable *ht,iph->s_addr,len){
-
-}
-
-void get_average(struct hashtable *ht){
-    //全てのホワイトリストのパケット数、スループットを計算
-    //ホワイトリストのスループットをリセット
-
-}
-void get_dispresion(struct hashtable *ht){
-
-}
-void update_priority(struct hashtable *ht){
-
-}
-void get_statistics(mtcp_manager mtcp){
-    uint32_t packet_ave,throughput_ave;
-    get_average();
-    uint32_t packet_dis,throughput_dis;
-    get_dispresion();
-    update_priority();
-}
-
-bool JudgeDropbyIp(struct hashtable *ht,u_int32_t s_addr){
+bool JudgeDropbyIp(struct hashtable *ht,ip_addr s_addr){
     return false;
 }
-unsigned int
-IPHashFlow(const void *saddr)
+int EqualIP(const void *ip1, const void *ip2)
+{
+	ip_addr *ip_1 = (ip_addr *)ip1;
+	ip_addr *ip_2 = (ip_addr *)ip2;
+
+	return (*ip_1==*ip_2);
+}
+unsigned int IPHashFlow(const void *saddr)
 {
     tcp_stream *saddr = (ip_addr * )saddr;
 	unsigned int hash, i;
@@ -60,13 +43,31 @@ IPHashFlow(const void *saddr)
 	hash += (hash << 15);
 
 	return hash & (NUM_BINS_FLOWS - 1);
-#endif
+
+}
+void AddedPacketStatistics(struct hashtable *ht,ip_addr saddr,int ip_len){
+
 }
 
-int EqualIP(const void *ip1, const void *ip2)
-{
-	ip_addr *ip_1 = (ip_addr *)ip1;
-	ip_addr *ip_2 = (ip_addr *)ip2;
+void get_average(struct hashtable *ht){
+    //全てのホワイトリストのパケット数、スループットを計算
+    //ホワイトリストのスループットをリセット
 
-	return (*ip_1==*ip_2);
 }
+void get_dispresion(struct hashtable *ht){
+
+}
+
+void get_statistics(mtcp_manager mtcp){
+    uint32_t packet_ave,throughput_ave;
+    get_average(mtcp->ip_stat_table);
+    uint32_t packet_dis,throughput_dis;
+    get_dispresion(mtcp->ip_stat_table);
+    update_priority(mtcp->ip_stat_table);
+}
+
+void update_priority(struct hashtable *ht){
+
+}
+
+

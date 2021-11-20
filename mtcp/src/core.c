@@ -1267,6 +1267,9 @@ MTCPRunThread(void *arg)
 #if USE_CCP
 	DestroyHashtable(g_mtcp[cpu]->tcp_sid_table);
 #endif
+#if define(USE_DDOSPROT)
+	DestroyHashtable(g_mtcp[cpu]->ip_stat_table);
+#endif
 	DestroyHashtable(g_mtcp[cpu]->listeners);
 	
 	TRACE_DBG("MTCP thread %d finished.\n", ctx->cpu);
