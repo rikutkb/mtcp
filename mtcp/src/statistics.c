@@ -2,7 +2,8 @@
 #include <assert.h>
 #include <time.h>
 #include <inttypes.h>
-
+#include <stdio.h>
+#include <stdlib.h>
 #include "tcp_util.h"
 #include "tcp_in.h"
 #include "tcp_out.h"
@@ -16,16 +17,37 @@
 #include "tcp_syncookie.h"
 
 #include "statistics.h"
+static inline ip_statistic * CreateNewIpEntry(mtcp_manager_t mtcp, ip_addr s_addr){
+	ip_statistic *cur_ip_stat;
+	//do alloc memory
+	cur_ip_stat->ip = saddr;
+	cur_ip_stat->priority  = 1;
+	return cur_ip_stat;
 
-bool JudgeDropbyIp(struct hashtable *ht,ip_addr s_addr){
-    return false;
+}
+bool JudgeDropbyIp(struct hashtable *ht,ip_addr saddr){
+	ip_statistic *cur_ip_stat = NULL;
+	ip_statistic ip_stat;
+	ip_stat.ip = saddr;
+	if (!(cur_ip_stat = IpHTSearch(ht, &ip_stat))) {// not in hashtable
+		return true;
+	}
+	switch(ip_stat->priority){
+		case 2:
+			return true;
+		case 1://10%
+			return rand()%10+1<=1;
+		case 0://40%
+			return rand()%10+1<=4;
+	}
+	
 }
 int EqualIP(const void *ip1, const void *ip2)
 {
-	ip_addr *ip_1 = (ip_addr *)ip1;
-	ip_addr *ip_2 = (ip_addr *)ip2;
+	ip_statistic *ip_1 = (ip_statistic *)ip1;
+	ip_statistic *ip_2 = (ip_statistic *)ip2;
 
-	return (*ip_1==*ip_2);
+	return (ip_1->ip==ip_2->ip);
 }
 unsigned int IPHashFlow(const void *saddr)
 {
@@ -46,28 +68,77 @@ unsigned int IPHashFlow(const void *saddr)
 
 }
 void AddedPacketStatistics(struct hashtable *ht,ip_addr saddr,int ip_len){
+	ip_statistic *cur_ip_stat = NULL;
+	ip_statistic ip_stat;
+	ip_stat.ip = saddr;
+	if (!(cur_ip_stat = IpHTSearch(ht, &ip_stat))) {
+		cur_ip_stat = CreateNew
+		if(!cur_ip_stat){
+			printf("cannot created ht");
+			return;
+		}
+	}
 
 }
 
-void get_average(struct hashtable *ht){
+statistic get_average(struct hashtable *ht){
+	for (int i = 0; i < bins; i++){
+
+	}
     //全てのホワイトリストのパケット数、スループットを計算
+
+}
+statistic get_dispresion(struct hashtable *ht, statistics stat_ave){
+	statistic stat_sum;
+	int valid_ips = 0;
+	for (int i = 0; i < bins; i++){
+
+	}
+	if(valid_ips>0){
+		stat_sum.throughput_send_num /= valid_ips;
+		stat_sum.throughput_send_num = sqrt(stat_sum.throughput_send_num);
+
+	}else{
+	}
+
+	return stat_sum;
+
     //ホワイトリストのスループットをリセット
 
 }
-void get_dispresion(struct hashtable *ht){
 
+void get_statistics(mtcp_manager mtcp,statistic stat_dis){
+    statistic stat_ave;
+    stat_ave = get_average(mtcp->ip_stat_table);
+	statistic stat_dis;
+    stat_dis = get_dispresion(mtcp->ip_stat_table,stat_ave);
+    update_priority(mtcp->ip_stat_table,stat_dis);
+}
+void * IpHTSearch(struct hashtable *ht, const void *it){
+	int idx;
+	const ip_statistic *item = (const ip_statistic *)it;
+	ip_statistic *walk;
+	hash_bucket_head *head;
+
+	idx = ht->hashfn(item);
+
+	head = &ht->ht_table[ht->hashfn(item)];
+	TAILQ_FOREACH(walk, head, links) {
+		if (ht->eqfn(walk, item)) 
+			return walk;
+	}
+
+	//UNUSED(idx);
+	return NULL;
 }
 
-void get_statistics(mtcp_manager mtcp){
-    uint32_t packet_ave,throughput_ave;
-    get_average(mtcp->ip_stat_table);
-    uint32_t packet_dis,throughput_dis;
-    get_dispresion(mtcp->ip_stat_table);
-    update_priority(mtcp->ip_stat_table);
-}
-
-void update_priority(struct hashtable *ht){
-
+void update_priority(struct hashtable *ht, statistic stat_ave, statistic stat_dis){
+	for (int i = 0; i < bins; i++){//do all parameter
+		if(ip_statistic->throughput_send_num > max(throughput_def,stat_ave->throughput_send_num+stat_dis->throughput_send_num*2)){
+			ip_statistic->priority--;
+			ip_statistic->throughput_send_num = 0;
+		}
+	}
 }
 
 
