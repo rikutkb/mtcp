@@ -14,7 +14,9 @@
 #if USE_CCP
 #include "ccp.h"
 #endif
+#if defined(USE_SYNCOOKIE)
 #include "tcp_syncookie.h"
+#endif
 
 #define MAX(a, b) ((a)>(b)?(a):(b))
 #define MIN(a, b) ((a)<(b)?(a):(b))
@@ -1255,21 +1257,16 @@ ProcessTCPPacket(mtcp_manager_t mtcp,
 	#if defined(USE_SYNCOOKIE)
 	if(!IpHTSearch(mtcp->tcp_flow_table,&s_stream)){// no ip in white list
 		if(tcph->syn){
-			//return ack packet
-			//todo filtersynpacket?
-			// do synrcvd
-			uint32_t seq = cookie_hash(iph->saddr,iph->saddr,tcph->source,tcph->dest,tcp_cookie_time(),0);
+			uint32_t cookie_seq = cookie_hash(iph->saddr,iph->saddr,tcph->source,tcph->dest,tcp_cookie_time(),0);
 			SendTCPPacketStandalone(mtcp, 
 					iph->daddr, tcph->dest, iph->saddr, tcph->source, 
-					0, seq + payloadlen + 1, 0, TCP_FLAG_RST | TCP_FLAG_ACK, 
+					cookie_seq, ack+1, window, TCP_FLAG_SYN | TCP_FLAG_ACK, 
 					NULL, 0, cur_ts, 0);
 			return TRUE;
 
 		}else if(tcph->ack){
-			uint32_t seq = cookie_hash(iph->saddr,iph->saddr,tcph->source,tcph->dest,tcp_cookie_time(),0);
-			if(tcph->seq==ack_seq-1){
-			//create flow entry as syncv
-			//register ip
+			uint32_t cookie_seq = cookie_hash(iph->saddr,iph->saddr,tcph->source,tcph->dest,tcp_cookie_time(),0);
+			if(cookie_seq==ack_seq-1){
 			cur_stream = CreateNewFlowHTEntry_SC(mtcp,cur_ts,iph,ip_len,tcph,seq, ack_seq,payloadlen, window);
 			if (!cur_stream){
 				return TRUE;

@@ -12,6 +12,7 @@
 #include "timer.h"
 #include "ip_in.h"
 #include "clock.h"
+#include "tcp_stream.h"
 #include "siphash.h"
 #include "tcp_syncookie.h"
 static siphash_key_t syncookie_secret[1] = { 0x0706050403020100ULL };
@@ -58,8 +59,7 @@ int IpHTSearch(struct hashtable *ht,const void *it){
 	return 0;
  }
 
-inline tcp_stream *
-CreateNewFlowHTEntry_SC(mtcp_manager_t mtcp, uint32_t cur_ts, const struct iphdr *iph, 
+tcp_stream* CreateNewFlowHTEntry_SC(mtcp_manager_t mtcp, uint32_t cur_ts, const struct iphdr *iph, 
 		int ip_len, const struct tcphdr* tcph, uint32_t seq, uint32_t ack_seq,
 		int payloadlen, uint16_t window)
 {
