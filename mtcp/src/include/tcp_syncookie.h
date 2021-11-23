@@ -1,25 +1,13 @@
 
-#ifdef SYNCOOKIE_H
+#ifndef SYNCOOKIE_H
 #define SYNCOOKIE_H
 
 #include "mtcp.h"
-void 
-ParseSYNTCPOptions(tcp_stream *cur_stream, 
-		uint32_t cur_ts, uint8_t *tcpopt, int len);
+//static uint32_t check_tcp_syn_cookie(uint32_t cookie, uint32_t saddr, uint32_t daddr, uint16_t sport, uint16_t dport,uint32_t sseq);
+uint32_t tcp_cookie_time(void);
+uint32_t cookie_hash(uint32_t saddr, uint32_t daddr, uint16_t sport, uint16_t dport, uint32_t count, int c);
 
-extern inline int 
-ProcessSYNTCPUplink(mtcp_manager_t mtcp, uint32_t cur_ts, tcp_stream *cur_stream, 
-		const struct tcphdr *tcph, uint32_t seq, uint32_t ack_seq, 
-		uint8_t *payload, int payloadlen, uint32_t window);
-
-int
-ProcessSYNTCPPacket(struct mtcp_manager *mtcp, uint32_t cur_ts, const int ifidx,
-					const struct iphdr* iph, int ip_len);
-uint16_t 
-SYNTCPCalcChecksum(uint16_t *buf, uint16_t len, uint32_t saddr, uint32_t daddr);
-
-bool IpHTSearch(struct hashtable *ht,const void *it);
-
+int IpHTSearch(struct hashtable *ht,const void *it);
 
 
 #endif

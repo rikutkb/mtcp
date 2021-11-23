@@ -26,6 +26,7 @@ static inline ip_statistic * CreateNewIpEntry(mtcp_manager_t mtcp, ip_addr s_add
 
 }
 bool JudgeDropbyIp(struct hashtable *ht,ip_addr saddr){
+	//if is attacking
 	ip_statistic *cur_ip_stat = NULL;
 	ip_statistic ip_stat;
 	ip_stat.ip = saddr;
@@ -82,11 +83,13 @@ void AddedPacketStatistics(struct hashtable *ht,ip_addr saddr,int ip_len){
 }
 
 statistic get_average(struct hashtable *ht){
+	statistic stat_ave;
+
 	for (int i = 0; i < bins; i++){
 
 	}
     //全てのホワイトリストのパケット数、スループットを計算
-
+	return stat_ave;
 }
 statistic get_dispresion(struct hashtable *ht, statistics stat_ave){
 	statistic stat_sum;
@@ -95,8 +98,8 @@ statistic get_dispresion(struct hashtable *ht, statistics stat_ave){
 
 	}
 	if(valid_ips>0){
-		stat_sum.throughput_send_num /= valid_ips;
-		stat_sum.throughput_send_num = sqrt(stat_sum.throughput_send_num);
+		stat_sum.packet_recv_num /= valid_ips;
+		stat_sum.packet_recv_num = sqrt(stat_sum.packet_recv_num);
 
 	}else{
 	}
@@ -134,9 +137,9 @@ void * IpHTSearch(struct hashtable *ht, const void *it){
 
 void update_priority(struct hashtable *ht, statistic stat_ave, statistic stat_dis){
 	for (int i = 0; i < bins; i++){//do all parameter
-		if(ip_statistic->throughput_send_num > max(throughput_def,stat_ave->throughput_send_num+stat_dis->throughput_send_num*2)){
+		if(ip_statistic->packet_recv_num > max(throughput_def,stat_ave->packet_recv_num+stat_dis->packet_recv_num*2)){
 			ip_statistic->priority--;
-			ip_statistic->throughput_send_num = 0;
+			ip_statistic->packet_recv_num = 0;
 		}
 	}
 }

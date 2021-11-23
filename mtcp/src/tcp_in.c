@@ -14,6 +14,7 @@
 #if USE_CCP
 #include "ccp.h"
 #endif
+#include "tcp_syncookie.h"
 
 #define MAX(a, b) ((a)>(b)?(a):(b))
 #define MIN(a, b) ((a)<(b)?(a):(b))
@@ -1251,49 +1252,37 @@ ProcessTCPPacket(mtcp_manager_t mtcp,
 	s_stream.sport = tcph->dest;
 	s_stream.daddr = iph->saddr;
 	s_stream.dport = tcph->source;
-	//if syn cookie 
+	#if defined(USE_SYNCOOKIE)
+	if(!IpHTSearch(mtcp->tcp_flow_table,&s_stream)){// no ip in white list
+		if(tcph->syn){
+			//return ack packet
+			//todo filtersynpacket?
+			// do synrcvd
+			uint32_t seq = cookie_hash(iph->saddr,iph->saddr,tcph->source,tcph->dest,tcp_cookie_time(),0);
+			SendTCPPacketStandalone(mtcp, 
+					iph->daddr, tcph->dest, iph->saddr, tcph->source, 
+					0, seq + payloadlen + 1, 0, TCP_FLAG_RST | TCP_FLAG_ACK, 
+					NULL, 0, cur_ts, 0);
+			return TRUE;
 
-		//search in white list
-		
-		/*
+		}else if(tcph->ack){
+			uint32_t seq = cookie_hash(iph->saddr,iph->saddr,tcph->source,tcph->dest,tcp_cookie_time(),0);
+			if(tcph->seq==ack_seq-1){
+			//create flow entry as syncv
+			//register ip
+			cur_stream = CreateNewFlowHTEntry_SC(mtcp,cur_ts,iph,ip_len,tcph,seq, ack_seq,payloadlen, window);
+			if (!cur_stream){
+				return TRUE;
+			}
+			cur_stream->state = TCP_ST_SYN_RCVD;
+			}else{
+				return FALSE;
+			}
 
-		if(!)
-		if(searchWhiteList(mtcp->white_list,&s_stream.saddr)){
-			//normal tcp process
 		}else{
 
-			//not found in list
-			switch  state:
-				case ack:
-					if(cal_hash(s_stream)){
-						add_whitelist(ip);
-					create stream and makeestablished
-						normalprcess();
-					}else{
-						send_reset();
-					}
-				case syn:
-					seq = cal_hash(s_stream);
-					send_syn_ack(seq);
-
-
 		}
-		*/
-
-	//if normal tcp
-	#if define(USE_SYNCOOKIE)
-		tcp_stream *ip_stream = NULL;
-		if(!IpHTSearch((mtcp->ip_table,&s_stream)){// no white list
-	
-			if(tcph->syn){
-
-			}else if(tcph->ack){
-				
-			}else{
-
-			}
-		}
-
+	}
 	#endif
 
 	if (!(cur_stream = StreamHTSearch(mtcp->tcp_flow_table, &s_stream))) {
@@ -1304,7 +1293,7 @@ ProcessTCPPacket(mtcp_manager_t mtcp,
 		if (!cur_stream)
 			return TRUE;
 	}
-	#if define(USE_DDOSPROT)
+	#if defined(USE_DDOSPROT)
 		//for established ip
 		AddedPacketStatistics(mtcp->ip_stat_table, iph->s_addr,len);
 	#endif

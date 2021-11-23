@@ -226,10 +226,10 @@ struct mtcp_manager
 #if USE_CCP
 	struct hashtable *tcp_sid_table;
 #endif
-#if define(USE_SYNCOOKIE)
+#if defined(USE_SYNCOOKIE)
 	struct hashtable *white_list;
 #endif
-#if define(USE_DDOSPROT)
+#if defined(USE_DDOSPROT)
 	struct hashtable *ip_stat_table;
 #endif
 

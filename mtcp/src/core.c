@@ -32,7 +32,7 @@
 #include "ccp.h"
 #include "libccp/ccp.h"
 #endif
-#if define(USE_DDOSPROT)
+#if defined(USE_DDOSPROT)
 #include "statistics.h"
 #endif
 #ifndef DISABLE_DPDK
@@ -794,7 +794,7 @@ RunMainLoop(struct mtcp_thread_context *ctx)
 			for (i = 0; i < recv_cnt; i++) {
 				pktbuf = mtcp->iom->get_rptr(mtcp->ctx, rx_inf, i, &len);
 				if (pktbuf != NULL){
-					#if define(USE_DDOSPROT)
+					#if defined(USE_DDOSPROT)
 						struct iphdr* iph = (struct iphdr *)(pkt_data + sizeof(struct ethhdr));
 						if(JudgeDropbyIp(iph->saddr)){
 							continue;
@@ -942,7 +942,7 @@ InitializeMTCPManager(struct mtcp_thread_context* ctx)
 		return NULL;
 	}
 #endif
-#if define(USE_DDOSPROT)
+#if defined(USE_DDOSPROT)
 	mtcp->ip_stat_table = CreateHashtable(IPHashFlow, EqualIP, NUM_BINS_FLOWS);
 	if (!mtcp->ip_stat_table) {
 		CTRACE_ERROR("Failed to allocate tcp sid lookup table.\n");
@@ -1267,7 +1267,7 @@ MTCPRunThread(void *arg)
 #if USE_CCP
 	DestroyHashtable(g_mtcp[cpu]->tcp_sid_table);
 #endif
-#if define(USE_DDOSPROT)
+#if defined(USE_DDOSPROT)
 	DestroyHashtable(g_mtcp[cpu]->ip_stat_table);
 #endif
 	DestroyHashtable(g_mtcp[cpu]->listeners);
