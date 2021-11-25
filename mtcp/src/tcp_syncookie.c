@@ -73,8 +73,10 @@ tcp_stream* CreateNewFlowHTEntry_SC(mtcp_manager_t mtcp, uint32_t cur_ts, const 
 		TRACE_ERROR("INFO: Could not allocate tcp_stream!\n");
 		return NULL;
 	}
+	cur_stream->sndvar->iss = ack_seq;
+
 	// cur_stream->rcvvar->irs = seq;
-	// cur_stream->sndvar->peer_wnd = window;
+	//cur_stream->sndvar->peer_wnd = window;
 	// cur_stream->rcv_nxt = cur_stream->rcvvar->irs;
 	// cur_stream->sndvar->cwnd = 1;
 	//ParseTCPOptions(cur_stream, cur_ts, (uint8_t *)tcph + TCP_HEADER_LEN, (tcph->doff << 2) - TCP_HEADER_LEN);

@@ -123,7 +123,7 @@ probe_all_rte_devices(char **argv, int *argc, char *dev_name_list)
 		while (dev_token != NULL) {
 			strcpy(pd.ifname, dev_token);
 			if (ioctl(fd, FETCH_PCI_ADDRESS, &pd) == -1) {
-				TRACE_DBG("Could not find pci info on dpdk "
+				TRACE_INFO("Could not find pci info on dpdk "
 					  "device: %s. Is it a dpdk-attached "
 					  "interface?\n", dev_token);
 				goto loop_over;

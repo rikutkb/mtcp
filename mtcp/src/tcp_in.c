@@ -1254,30 +1254,41 @@ ProcessTCPPacket(mtcp_manager_t mtcp,
 	s_stream.sport = tcph->dest;
 	s_stream.daddr = iph->saddr;
 	s_stream.dport = tcph->source;
+
+	TRACE_DBG("use syncookie");
+	printf("use syncookie");
 	#if defined(USE_SYNCOOKIE)
+	TRACE_DBG("packet in syncookie");
+	printf("packet in syncookie");
+
 	if(!IpHTSearch(mtcp->tcp_flow_table,&s_stream)){// no ip in white list
+		TRACE_DBG("not found in tables");
 		if(tcph->syn){
+			TRACE_DBG("synpacket");
+
 			uint32_t cookie_seq = cookie_hash(iph->saddr,iph->saddr,tcph->source,tcph->dest,tcp_cookie_time(),0);
 			SendTCPPacketStandalone(mtcp, 
 					iph->daddr, tcph->dest, iph->saddr, tcph->source, 
-					cookie_seq, ack+1, window, TCP_FLAG_SYN | TCP_FLAG_ACK, 
+					cookie_seq, seq+1, window, TCP_FLAG_SYN | TCP_FLAG_ACK, 
 					NULL, 0, cur_ts, 0);
 			return TRUE;
 
 		}else if(tcph->ack){
+			TRACE_DBG("ack packet");
+
 			uint32_t cookie_seq = cookie_hash(iph->saddr,iph->saddr,tcph->source,tcph->dest,tcp_cookie_time(),0);
 			if(cookie_seq==ack_seq-1){
-			cur_stream = CreateNewFlowHTEntry_SC(mtcp,cur_ts,iph,ip_len,tcph,seq, ack_seq,payloadlen, window);
-			if (!cur_stream){
-				return TRUE;
-			}
-			cur_stream->state = TCP_ST_SYN_RCVD;
+				cur_stream = CreateNewFlowHTEntry_SC(mtcp,cur_ts,iph,ip_len,tcph,seq, cookie_seq,payloadlen, window);
+				if (!cur_stream){
+					return TRUE;
+				}
+				cur_stream->state = TCP_ST_SYN_RCVD;
 			}else{
 				return FALSE;
 			}
 
 		}else{
-
+			return FALSE;
 		}
 	}
 	#endif
@@ -1321,6 +1332,7 @@ ProcessTCPPacket(mtcp_manager_t mtcp,
 				
 	cur_stream->last_active_ts = cur_ts;
 	UpdateTimeoutList(mtcp, cur_stream);
+	TRACE_DBG("packet.\n");
 
 	/* Process RST: process here only if state > TCP_ST_SYN_SENT */
 	if (tcph->rst) {
@@ -1343,22 +1355,27 @@ ProcessTCPPacket(mtcp_manager_t mtcp,
 		break;
 
 	case TCP_ST_SYN_RCVD:
+		TRACE_DBG("synrcv.\n");
+
 		/* SYN retransmit implies our SYN/ACK was lost. Resend */
 		if (tcph->syn && seq == cur_stream->rcvvar->irs)
 			Handle_TCP_ST_LISTEN(mtcp, cur_ts, cur_stream, tcph);
 		else {
+
 			Handle_TCP_ST_SYN_RCVD(mtcp, cur_ts, cur_stream, tcph, ack_seq);
 			if (payloadlen > 0 && cur_stream->state == TCP_ST_ESTABLISHED) {
 				Handle_TCP_ST_ESTABLISHED(mtcp, cur_ts, cur_stream, tcph,
 							  seq, ack_seq, payload,
 							  payloadlen, window);
 			}
+			printf("synrcvd to established");
 		}
 		break;
 
 	case TCP_ST_ESTABLISHED:
 		Handle_TCP_ST_ESTABLISHED(mtcp, cur_ts, cur_stream, tcph, 
 				seq, ack_seq, payload, payloadlen, window);
+		printf("established");
 		break;
 
 	case TCP_ST_CLOSE_WAIT:
