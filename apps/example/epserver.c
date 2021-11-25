@@ -225,7 +225,6 @@ HandleReadEvent(struct thread_context *ctx, int sockid, struct server_vars *sv)
 	TRACE_APP("Socket %d URL: %s\n", sockid, url);
 	sprintf(sv->fname, "%s%s", www_main, url);
 	TRACE_APP("Socket %d File name: %s\n", sockid, sv->fname);
-
 	sv->keep_alive = FALSE;
 	if (http_header_str_val(sv->request, "Connection: ", 
 				strlen("Connection: "), keepalive_str, 128)) {	
@@ -239,7 +238,7 @@ HandleReadEvent(struct thread_context *ctx, int sockid, struct server_vars *sv)
 	/* Find file in cache */
 	scode = 404;
 	for (i = 0; i < nfiles; i++) {
-		if (strcmp(sv->fname, fcache[i].fullname) == 0) {
+		if (1){//strcmp(sv->fname, fcache[i].fullname) == 0) {
 			sv->fsize = fcache[i].size;
 			sv->fidx = i;
 			scode = 200;

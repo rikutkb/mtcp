@@ -414,22 +414,18 @@ ProcessACK(mtcp_manager_t mtcp, tcp_stream *cur_stream, uint32_t cur_ts,
 			  sndvar->cwnd / sndvar->mss);
 	}
 #endif
-	TRACE_INFO("bfastransmi");
 	/* Fast retransmission */
 	if (dup && cur_stream->rcvvar->dup_acks == 3) {
 		TRACE_LOSS("Triple duplicated ACKs!! ack_seq: %u\n", ack_seq);
 		TRACE_CCP("tridup ack %u (%u)!\n", ack_seq - cur_stream->sndvar->iss, ack_seq);
 		if (TCP_SEQ_LT(ack_seq, cur_stream->snd_nxt)) {
-			TRACE_INFO("423");
 			TRACE_LOSS("Reducing snd_nxt from %u to %u\n",
                                         cur_stream->snd_nxt-sndvar->iss,
                                         ack_seq - cur_stream->sndvar->iss);
-			TRACE_INFO("426");
 #if RTM_STAT
 			sndvar->rstat.tdp_ack_cnt++;
 			sndvar->rstat.tdp_ack_bytes += (cur_stream->snd_nxt - ack_seq);
 #endif
-		TRACE_INFO("431");
 #if USE_CCP
 			ccp_record_event(mtcp, cur_stream, EVENT_TRI_DUPACK, ack_seq);
 #endif
@@ -444,7 +440,6 @@ ProcessACK(mtcp_manager_t mtcp, tcp_stream *cur_stream, uint32_t cur_ts,
 			cur_stream->snd_nxt = ack_seq;
 #endif
 		}
-		TRACE_INFO("446");
 
 		/* update congestion control variables */
 		/* ssthresh to half of min of cwnd and peer wnd */
@@ -457,7 +452,6 @@ ProcessACK(mtcp_manager_t mtcp, tcp_stream *cur_stream, uint32_t cur_ts,
 		TRACE_CONG("fast retrans: cwnd = ssthresh(%u)+3*mss = %u\n",
                                 sndvar->ssthresh / sndvar->mss,
                                 sndvar->cwnd / sndvar->mss);
-		TRACE_INFO("459");
 
 		/* count number of retransmissions */
 		if (sndvar->nrtx < TCP_MAX_RTX) {
@@ -469,7 +463,6 @@ ProcessACK(mtcp_manager_t mtcp, tcp_stream *cur_stream, uint32_t cur_ts,
 		AddtoSendList(mtcp, cur_stream);
 
 	} else if (cur_stream->rcvvar->dup_acks > 3) {
-		TRACE_INFO("472");
 
 		/* Inflate congestion window until before overflow */
 		if ((uint32_t)(sndvar->cwnd + sndvar->mss) > sndvar->cwnd) {
@@ -478,13 +471,11 @@ ProcessACK(mtcp_manager_t mtcp, tcp_stream *cur_stream, uint32_t cur_ts,
 					sndvar->cwnd, sndvar->ssthresh);
 		}
 	}
-	TRACE_INFO("not dup");
 
 #if TCP_OPT_SACK_ENABLED
 	ParseSACKOption(cur_stream, ack_seq, (uint8_t *)tcph + TCP_HEADER_LEN, 
 			(tcph->doff << 2) - TCP_HEADER_LEN);
 #endif /* TCP_OPT_SACK_ENABLED */
-	TRACE_INFO("487");
 
 #if RECOVERY_AFTER_LOSS
 #if USE_CCP
@@ -522,8 +513,6 @@ ProcessACK(mtcp_manager_t mtcp, tcp_stream *cur_stream, uint32_t cur_ts,
 		}
 	}
 #endif /* RECOVERY_AFTER_LOSS */
-	TRACE_INFO("525");
-	TRACE_INFO("%d",sndvar->eff_mss);
 	rmlen = ack_seq - sndvar->sndbuf->head_seq;
 	uint16_t packets = rmlen / sndvar->eff_mss;
 	if (packets * sndvar->eff_mss > rmlen) {
@@ -540,7 +529,6 @@ ProcessACK(mtcp_manager_t mtcp, tcp_stream *cur_stream, uint32_t cur_ts,
 	if (TCP_SEQ_GEQ(sndvar->sndbuf->head_seq, ack_seq)) {
 		return;
 	}
-		TRACE_INFO("gyo536");
 
 	/* Remove acked sequence from send buffer */
 	if (rmlen > 0) {
@@ -926,7 +914,6 @@ Handle_TCP_ST_ESTABLISHED (mtcp_manager_t mtcp, uint32_t cur_ts,
 		AddtoControlList(mtcp, cur_stream, cur_ts);
 		return;
 	}
-	TRACE_INFO("lencheck");
 	if (payloadlen > 0) {
 		if (ProcessTCPPayload(mtcp, cur_stream, 
 				cur_ts, payload, seq, payloadlen)) {
@@ -936,7 +923,6 @@ Handle_TCP_ST_ESTABLISHED (mtcp_manager_t mtcp, uint32_t cur_ts,
 			EnqueueACK(mtcp, cur_stream, cur_ts, ACK_OPT_NOW);
 		}
 	}
-	TRACE_INFO("ackcheck");
 
 	if (tcph->ack) {
 		if (cur_stream->sndvar->sndbuf) {
@@ -944,7 +930,6 @@ Handle_TCP_ST_ESTABLISHED (mtcp_manager_t mtcp, uint32_t cur_ts,
 					tcph, seq, ack_seq, window, payloadlen);
 		}
 	}
-	TRACE_INFO("fincheck");
 
 	if (tcph->fin) {
 		/* process the FIN only if the sequence is valid */
