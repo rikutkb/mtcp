@@ -504,15 +504,15 @@ FlushTCPSendingBuffer(mtcp_manager_t mtcp, tcp_stream *cur_stream, uint32_t cur_
 #endif
 		/* sanity check */
 		if (TCP_SEQ_LT(seq, sndvar->sndbuf->head_seq)) {
-			TRACE_ERROR("Stream %d: Invalid sequence to send. "
+			TRACE_ERROR("Stream %d: Invalid sequencehead to send. "
 						"state: %s, seq: %u, head_seq: %u.\n",
 						cur_stream->id, TCPStateToString(cur_stream),
 						seq, sndvar->sndbuf->head_seq);
 			assert(0);
 			break;
 		}
-		if (TCP_SEQ_LT(seq, sndvar->snd_una)) {
-			TRACE_ERROR("Stream %d: Invalid sequence to send. "
+		if (TCP_SEQ_LT(seq, sndvar->snd_una)) {//if seq < snd_una
+			TRACE_ERROR("Stream %d: Invalid sequenceuna to send. "
 						"state: %s, seq: %u, snd_una: %u.\n",
 						cur_stream->id, TCPStateToString(cur_stream),
 						seq, sndvar->snd_una);

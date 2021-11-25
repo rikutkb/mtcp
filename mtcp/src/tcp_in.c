@@ -80,7 +80,7 @@ HandlePassiveOpen(mtcp_manager_t mtcp, uint32_t cur_ts, const struct iphdr *iph,
 	cur_stream->sndvar->cwnd = 1;
 	ParseTCPOptions(cur_stream, cur_ts, (uint8_t *)tcph + TCP_HEADER_LEN, 
 			(tcph->doff << 2) - TCP_HEADER_LEN);
-
+	
 	return cur_stream;
 }
 /*----------------------------------------------------------------------------*/
@@ -120,7 +120,7 @@ ValidateSequence(mtcp_manager_t mtcp, tcp_stream *cur_stream, uint32_t cur_ts,
 				(tcph->doff << 2) - TCP_HEADER_LEN)) {
 			/* if there is no timestamp */
 			/* TODO: implement here */
-			TRACE_DBG("No timestamp found.\n");
+			TRACE_INFO("No timestamp found.\n");
 			return FALSE;
 		}
 
@@ -128,7 +128,7 @@ ValidateSequence(mtcp_manager_t mtcp, tcp_stream *cur_stream, uint32_t cur_ts,
 		if (TCP_SEQ_LT(ts.ts_val, cur_stream->rcvvar->ts_recent)) {
 			/* TODO: ts_recent should be invalidated 
 					 before timestamp wraparound for long idle flow */
-			TRACE_DBG("PAWS Detect wrong timestamp. "
+			TRACE_INFO("PAWS Detect wrong timestamp. "
 					"seq: %u, ts_val: %u, prev: %u\n", 
 					seq, ts.ts_val, cur_stream->rcvvar->ts_recent);
 			EnqueueACK(mtcp, cur_stream, cur_ts, ACK_OPT_NOW);
@@ -136,7 +136,7 @@ ValidateSequence(mtcp_manager_t mtcp, tcp_stream *cur_stream, uint32_t cur_ts,
 		} else {
 			/* valid timestamp */
 			if (TCP_SEQ_GT(ts.ts_val, cur_stream->rcvvar->ts_recent)) {
-				TRACE_TSTAMP("Timestamp update. cur: %u, prior: %u "
+				TRACE_INFO("Timestamp update. cur: %u, prior: %u "
 					"(time diff: %uus)\n", 
 					ts.ts_val, cur_stream->rcvvar->ts_recent, 
 					TS_TO_USEC(cur_ts - cur_stream->rcvvar->ts_last_ts_upd));
@@ -147,8 +147,6 @@ ValidateSequence(mtcp_manager_t mtcp, tcp_stream *cur_stream, uint32_t cur_ts,
 			cur_stream->rcvvar->ts_lastack_rcvd = ts.ts_ref;
 		}
 	}
-
-	/* TCP sequence validation */
 	if (!TCP_SEQ_BETWEEN(seq + payloadlen, cur_stream->rcv_nxt, 
 				cur_stream->rcv_nxt + cur_stream->rcvvar->rcv_wnd)) {
 
@@ -416,20 +414,22 @@ ProcessACK(mtcp_manager_t mtcp, tcp_stream *cur_stream, uint32_t cur_ts,
 			  sndvar->cwnd / sndvar->mss);
 	}
 #endif
+	TRACE_INFO("bfastransmi");
 	/* Fast retransmission */
 	if (dup && cur_stream->rcvvar->dup_acks == 3) {
 		TRACE_LOSS("Triple duplicated ACKs!! ack_seq: %u\n", ack_seq);
 		TRACE_CCP("tridup ack %u (%u)!\n", ack_seq - cur_stream->sndvar->iss, ack_seq);
 		if (TCP_SEQ_LT(ack_seq, cur_stream->snd_nxt)) {
+			TRACE_INFO("423");
 			TRACE_LOSS("Reducing snd_nxt from %u to %u\n",
                                         cur_stream->snd_nxt-sndvar->iss,
                                         ack_seq - cur_stream->sndvar->iss);
-
+			TRACE_INFO("426");
 #if RTM_STAT
 			sndvar->rstat.tdp_ack_cnt++;
 			sndvar->rstat.tdp_ack_bytes += (cur_stream->snd_nxt - ack_seq);
 #endif
-
+		TRACE_INFO("431");
 #if USE_CCP
 			ccp_record_event(mtcp, cur_stream, EVENT_TRI_DUPACK, ack_seq);
 #endif
@@ -444,6 +444,7 @@ ProcessACK(mtcp_manager_t mtcp, tcp_stream *cur_stream, uint32_t cur_ts,
 			cur_stream->snd_nxt = ack_seq;
 #endif
 		}
+		TRACE_INFO("446");
 
 		/* update congestion control variables */
 		/* ssthresh to half of min of cwnd and peer wnd */
@@ -456,6 +457,7 @@ ProcessACK(mtcp_manager_t mtcp, tcp_stream *cur_stream, uint32_t cur_ts,
 		TRACE_CONG("fast retrans: cwnd = ssthresh(%u)+3*mss = %u\n",
                                 sndvar->ssthresh / sndvar->mss,
                                 sndvar->cwnd / sndvar->mss);
+		TRACE_INFO("459");
 
 		/* count number of retransmissions */
 		if (sndvar->nrtx < TCP_MAX_RTX) {
@@ -467,6 +469,8 @@ ProcessACK(mtcp_manager_t mtcp, tcp_stream *cur_stream, uint32_t cur_ts,
 		AddtoSendList(mtcp, cur_stream);
 
 	} else if (cur_stream->rcvvar->dup_acks > 3) {
+		TRACE_INFO("472");
+
 		/* Inflate congestion window until before overflow */
 		if ((uint32_t)(sndvar->cwnd + sndvar->mss) > sndvar->cwnd) {
 			sndvar->cwnd += sndvar->mss;
@@ -474,11 +478,13 @@ ProcessACK(mtcp_manager_t mtcp, tcp_stream *cur_stream, uint32_t cur_ts,
 					sndvar->cwnd, sndvar->ssthresh);
 		}
 	}
+	TRACE_INFO("not dup");
 
 #if TCP_OPT_SACK_ENABLED
 	ParseSACKOption(cur_stream, ack_seq, (uint8_t *)tcph + TCP_HEADER_LEN, 
 			(tcph->doff << 2) - TCP_HEADER_LEN);
 #endif /* TCP_OPT_SACK_ENABLED */
+	TRACE_INFO("487");
 
 #if RECOVERY_AFTER_LOSS
 #if USE_CCP
@@ -516,7 +522,8 @@ ProcessACK(mtcp_manager_t mtcp, tcp_stream *cur_stream, uint32_t cur_ts,
 		}
 	}
 #endif /* RECOVERY_AFTER_LOSS */
-
+	TRACE_INFO("525");
+	TRACE_INFO("%d",sndvar->eff_mss);
 	rmlen = ack_seq - sndvar->sndbuf->head_seq;
 	uint16_t packets = rmlen / sndvar->eff_mss;
 	if (packets * sndvar->eff_mss > rmlen) {
@@ -533,6 +540,7 @@ ProcessACK(mtcp_manager_t mtcp, tcp_stream *cur_stream, uint32_t cur_ts,
 	if (TCP_SEQ_GEQ(sndvar->sndbuf->head_seq, ack_seq)) {
 		return;
 	}
+		TRACE_INFO("gyo536");
 
 	/* Remove acked sequence from send buffer */
 	if (rmlen > 0) {
@@ -672,7 +680,6 @@ ProcessTCPPayload(mtcp_manager_t mtcp, tcp_stream *cur_stream,
 	if (cur_stream->state == TCP_ST_ESTABLISHED) {
 		RaiseReadEvent(mtcp, cur_stream);
 	}
-
 	return TRUE;
 }
 /*----------------------------------------------------------------------------*/
@@ -919,7 +926,7 @@ Handle_TCP_ST_ESTABLISHED (mtcp_manager_t mtcp, uint32_t cur_ts,
 		AddtoControlList(mtcp, cur_stream, cur_ts);
 		return;
 	}
-
+	TRACE_INFO("lencheck");
 	if (payloadlen > 0) {
 		if (ProcessTCPPayload(mtcp, cur_stream, 
 				cur_ts, payload, seq, payloadlen)) {
@@ -929,13 +936,15 @@ Handle_TCP_ST_ESTABLISHED (mtcp_manager_t mtcp, uint32_t cur_ts,
 			EnqueueACK(mtcp, cur_stream, cur_ts, ACK_OPT_NOW);
 		}
 	}
-	
+	TRACE_INFO("ackcheck");
+
 	if (tcph->ack) {
 		if (cur_stream->sndvar->sndbuf) {
 			ProcessACK(mtcp, cur_stream, cur_ts, 
 					tcph, seq, ack_seq, window, payloadlen);
 		}
 	}
+	TRACE_INFO("fincheck");
 
 	if (tcph->fin) {
 		/* process the FIN only if the sequence is valid */
@@ -1255,17 +1264,10 @@ ProcessTCPPacket(mtcp_manager_t mtcp,
 	s_stream.daddr = iph->saddr;
 	s_stream.dport = tcph->source;
 
-	TRACE_DBG("use syncookie");
-	printf("use syncookie");
 	#if defined(USE_SYNCOOKIE)
-	TRACE_DBG("packet in syncookie");
-	printf("packet in syncookie");
 
 	if(!IpHTSearch(mtcp->tcp_flow_table,&s_stream)){// no ip in white list
-		TRACE_DBG("not found in tables");
 		if(tcph->syn){
-			TRACE_DBG("synpacket");
-
 			uint32_t cookie_seq = cookie_hash(iph->saddr,iph->saddr,tcph->source,tcph->dest,tcp_cookie_time(),0);
 			SendTCPPacketStandalone(mtcp, 
 					iph->daddr, tcph->dest, iph->saddr, tcph->source, 
@@ -1274,8 +1276,6 @@ ProcessTCPPacket(mtcp_manager_t mtcp,
 			return TRUE;
 
 		}else if(tcph->ack){
-			TRACE_DBG("ack packet");
-
 			uint32_t cookie_seq = cookie_hash(iph->saddr,iph->saddr,tcph->source,tcph->dest,tcp_cookie_time(),0);
 			if(cookie_seq==ack_seq-1){
 				cur_stream = CreateNewFlowHTEntry_SC(mtcp,cur_ts,iph,ip_len,tcph,seq, cookie_seq,payloadlen, window);
@@ -1295,12 +1295,12 @@ ProcessTCPPacket(mtcp_manager_t mtcp,
 
 	if (!(cur_stream = StreamHTSearch(mtcp->tcp_flow_table, &s_stream))) {
 		/* not found in flow table */
-
 		cur_stream = CreateNewFlowHTEntry(mtcp, cur_ts, iph, ip_len, tcph, 
 				seq, ack_seq, payloadlen, window);
 		if (!cur_stream)
 			return TRUE;
 	}
+
 	#if defined(USE_DDOSPROT)
 		//for established ip
 		AddedPacketStatistics(mtcp->ip_stat_table, iph->s_addr,len);
@@ -1310,7 +1310,7 @@ ProcessTCPPacket(mtcp_manager_t mtcp,
 		ret = ValidateSequence(mtcp, cur_stream, 
 				cur_ts, tcph, seq, ack_seq, payloadlen);
 		if (!ret) {
-			TRACE_DBG("Stream %d: Unexpected sequence: %u, expected: %u\n",
+			TRACE_INFO("Stream %d: Unexpected sequence: %u, expected: %u\n",
 					cur_stream->id, seq, cur_stream->rcv_nxt);
 #ifdef DBGMSG
 			DumpIPPacket(mtcp, iph, ip_len);
@@ -1332,7 +1332,6 @@ ProcessTCPPacket(mtcp_manager_t mtcp,
 				
 	cur_stream->last_active_ts = cur_ts;
 	UpdateTimeoutList(mtcp, cur_stream);
-	TRACE_DBG("packet.\n");
 
 	/* Process RST: process here only if state > TCP_ST_SYN_SENT */
 	if (tcph->rst) {
@@ -1355,7 +1354,7 @@ ProcessTCPPacket(mtcp_manager_t mtcp,
 		break;
 
 	case TCP_ST_SYN_RCVD:
-		TRACE_DBG("synrcv.\n");
+		TRACE_INFO("synrcv.\n");
 
 		/* SYN retransmit implies our SYN/ACK was lost. Resend */
 		if (tcph->syn && seq == cur_stream->rcvvar->irs)
@@ -1373,9 +1372,12 @@ ProcessTCPPacket(mtcp_manager_t mtcp,
 		break;
 
 	case TCP_ST_ESTABLISHED:
+		TRACE_INFO("estain.\n");
+
 		Handle_TCP_ST_ESTABLISHED(mtcp, cur_ts, cur_stream, tcph, 
 				seq, ack_seq, payload, payloadlen, window);
-		printf("established");
+		TRACE_INFO("esta.\n");
+
 		break;
 
 	case TCP_ST_CLOSE_WAIT:

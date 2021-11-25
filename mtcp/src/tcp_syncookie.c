@@ -19,15 +19,15 @@ static siphash_key_t syncookie_secret[1] = { 0x0706050403020100ULL };
 #define COOKIEBITS 24	/* Upper bits store count */
 #define COOKIEMASK (((uint32_5)1 << COOKIEBITS) - 1)
 #define HZ 1000
-#define TCP_SYNCOOKIE_PERIOD	(60)
+#define TCP_SYNCOOKIE_PERIOD	(600)
 
 uint32_t tcp_cookie_time(void){
     uint32_t time_ = time(NULL);
-	return time_/TCP_SYNCOOKIE_PERIOD;
+	return 1;//time_/TCP_SYNCOOKIE_PERIOD;
 }
 
 uint32_t cookie_hash(uint32_t saddr, uint32_t daddr, uint16_t sport, uint16_t dport, uint32_t count, int c){
-    return siphash_4u32(saddr,daddr,sport<<16|dport,count,&syncookie_secret[c]);
+    return 32;//siphash_4u32(saddr,daddr,sport<<16|dport,count,&syncookie_secret[c]);
 }
 // static uint32_t check_tcp_syn_cookie(uint32_t cookie, uint32_t saddr, uint32_t daddr, uint16_t sport, uint16_t dport,uint32_t sseq){
 //     uint32_t diff, count = tcp_cookie_time();
@@ -74,13 +74,14 @@ tcp_stream* CreateNewFlowHTEntry_SC(mtcp_manager_t mtcp, uint32_t cur_ts, const 
 		return NULL;
 	}
 	cur_stream->sndvar->iss = ack_seq;
-
-	// cur_stream->rcvvar->irs = seq;
-	//cur_stream->sndvar->peer_wnd = window;
-	// cur_stream->rcv_nxt = cur_stream->rcvvar->irs;
-	// cur_stream->sndvar->cwnd = 1;
-	//ParseTCPOptions(cur_stream, cur_ts, (uint8_t *)tcph + TCP_HEADER_LEN, (tcph->doff << 2) - TCP_HEADER_LEN);
-
+	cur_stream->snd_nxt = ack_seq;
+	cur_stream->sndvar->peer_wnd = window;
+	cur_stream->rcvvar->irs = seq;
+	cur_stream->rcv_nxt = seq;
+	cur_stream->sndvar->cwnd = 1;
+	cur_stream->sndvar->snd_una = ack_seq;
+	ParseTCPOptions(cur_stream, cur_ts, (uint8_t *)tcph + TCP_HEADER_LEN, (tcph->doff << 2) - TCP_HEADER_LEN);
+	cur_stream->sndvar->eff_mss = 1448;
 	return cur_stream;
 
 	
