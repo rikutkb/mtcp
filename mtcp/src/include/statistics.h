@@ -7,6 +7,8 @@
 #include <sys/queue.h>
 #include <pthread.h>
 #include "tcp_stream.h"
+#include "fhash.h"
+#include "tcp_util.h"
 typedef struct statistic{
     uint8_t packet_recv_num;
     uint32_t throughput_send_num;
@@ -26,9 +28,9 @@ int JudgeDropbyIp(struct hashtable *ht, uint32_t saddr);
 int EqualIP(const void *ip1, const void *ip2);
 unsigned int IPHashFlow(const void *saddr);
 void AddedPacketStatistics(struct hashtable *ht,uint32_t saddr,int ip_len);
-//statistic get_average(struct hashtable *ht);
-//statistic get_dispresion(struct hashtable *ht,  statistics stat_ave);
-//void get_statistics(mtcp_manager mtcp);
+statistic get_average(struct hashtable *ht);
+statistic get_dispresion(struct hashtable *ht,  statistic stat_ave);
+void get_statistics(mtcp_manager_t mtcp);
 void* IpWhiteHTSearch(struct hashtable *ht, const void *it);
-//void update_priority(struct hashtable *ht, statistic stat_ave, statistic stat_dis);
+void update_priority(struct hashtable *ht, statistic stat_ave, statistic stat_dis);
 #endif
