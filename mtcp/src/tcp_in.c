@@ -17,7 +17,9 @@
 #if defined(USE_SYNCOOKIE)
 #include "tcp_syncookie.h"
 #endif
-
+#if defined(USE_DDOSPROT)
+#include "statistics.h"
+#endif
 #define MAX(a, b) ((a)>(b)?(a):(b))
 #define MIN(a, b) ((a)<(b)?(a):(b))
 
@@ -1288,7 +1290,7 @@ ProcessTCPPacket(mtcp_manager_t mtcp,
 
 	#if defined(USE_DDOSPROT)
 		//for established ip
-		AddedPacketStatistics(mtcp->ip_stat_table, iph->s_addr,len);
+		AddedPacketStatistics(mtcp->ip_stat_table, iph->saddr,ip_len);
 	#endif
 	/* Validate sequence. if not valid, ignore the packet */
 	if (cur_stream->state > TCP_ST_SYN_RCVD) {

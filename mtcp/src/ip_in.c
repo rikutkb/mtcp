@@ -48,7 +48,6 @@ ProcessIPv4Packet(mtcp_manager_t mtcp, uint32_t cur_ts,
 		mtcp->iom->release_pkt(mtcp->ctx, ifidx, pkt_data, len);
 		return FALSE;
 	}
-	TRACE_INFO("packet in.\n");
 
 	switch (iph->protocol) {
 		case IPPROTO_TCP:

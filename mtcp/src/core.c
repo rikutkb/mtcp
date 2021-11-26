@@ -795,8 +795,8 @@ RunMainLoop(struct mtcp_thread_context *ctx)
 				pktbuf = mtcp->iom->get_rptr(mtcp->ctx, rx_inf, i, &len);
 				if (pktbuf != NULL){
 					#if defined(USE_DDOSPROT)
-						struct iphdr* iph = (struct iphdr *)(pkt_data + sizeof(struct ethhdr));
-						if(JudgeDropbyIp(iph->saddr)){
+						struct iphdr* iph = (struct iphdr *)(pktbuf + sizeof(struct ethhdr));
+						if(JudgeDropbyIp(mtcp->ip_stat_table,iph->saddr)){
 							continue;
 						}
 					#endif
