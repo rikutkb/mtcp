@@ -771,8 +771,11 @@ RunMainLoop(struct mtcp_thread_context *ctx)
 	uint32_t ts, ts_prev;
 	int thresh;
 	#if defined(USE_DDOSPROT)
-	time_t pre_statistic_time=cur_ts.tv_sec;
-	int statistic_duration= 60;
+	time_t pre_statistic_time =cur_ts.tv_sec;
+	int statistic_duration = 60;
+	int is_attacking = 0;
+	uint32_t packet_num = 0;
+	uint32_t attack_threthold = statistic_duration * 5000;
 
 	#endif
 	gettimeofday(&cur_ts, NULL);
@@ -788,9 +791,16 @@ RunMainLoop(struct mtcp_thread_context *ctx)
 		ts = TIMEVAL_TO_TS(&cur_ts);
 		mtcp->cur_ts = ts;
 		#if defined(USE_DDOSPROT)
-		if(cur_ts.tv_sec>pre_statistic_time+statistic_duration){
+		packet_num++;
+		if(cur_ts.tv_sec > pre_statistic_time+statistic_duration){
 			pre_statistic_time = cur_ts.tv_sec;
-			get_statistics(mtcp->ip_stat_table);
+			if(packet_num > attack_threthold){
+				get_statistics(mtcp->ip_stat_table);
+
+			}else{//not attacking
+
+			}
+			packet_num = 0;
 		}
 		#endif
 		for (rx_inf = 0; rx_inf < CONFIG.eths_num; rx_inf++) {
