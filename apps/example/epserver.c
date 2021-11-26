@@ -220,7 +220,6 @@ HandleReadEvent(struct thread_context *ctx, int sockid, struct server_vars *sv)
 				sv->request_len, strlen(sv->request), sv->request);
 		return rd;
 	}
-
 	http_get_url(sv->request, sv->request_len, url, URL_LEN);
 	TRACE_APP("Socket %d URL: %s\n", sockid, url);
 	sprintf(sv->fname, "%s%s", www_main, url);

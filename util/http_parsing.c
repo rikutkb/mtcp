@@ -210,12 +210,10 @@ http_get_url(char * data, int data_len, char* value, int value_len)
 	char *ret = data;
 	char *temp;
 	int i = 0;
-
 	if (strncmp(data, HTTP_GET, sizeof(HTTP_GET)-1)) {
 		*value = 0;
 		return NULL;
 	}
-	
 	ret += sizeof(HTTP_GET);
 	while (*ret && SPACE_OR_TAB(*ret)) 
 		ret++;
@@ -225,7 +223,6 @@ http_get_url(char * data, int data_len, char* value, int value_len)
 		value[i++] = *temp++;
 	}
 	value[i] = 0;
-	
 	return ret;
 }
 /*---------------------------------------------------------------------------*/
