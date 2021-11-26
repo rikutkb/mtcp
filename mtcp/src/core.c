@@ -770,7 +770,11 @@ RunMainLoop(struct mtcp_thread_context *ctx)
 	struct timeval cur_ts = {0};
 	uint32_t ts, ts_prev;
 	int thresh;
+	#if defined(USE_DDOSPROT)
+	time_t pre_statistic_time=cur_ts.tv_sec;
+	int statistic_duration= 60;
 
+	#endif
 	gettimeofday(&cur_ts, NULL);
 	TRACE_DBG("CPU %d: mtcp thread running.\n", ctx->cpu);
 
@@ -783,7 +787,12 @@ RunMainLoop(struct mtcp_thread_context *ctx)
 		gettimeofday(&cur_ts, NULL);
 		ts = TIMEVAL_TO_TS(&cur_ts);
 		mtcp->cur_ts = ts;
-
+		#if defined(USE_DDOSPROT)
+		if(cur_ts.tv_sec>pre_statistic_time+statistic_duration){
+			pre_statistic_time = cur_ts.tv_sec;
+			get_statistics(mtcp->ip_stat_table);
+		}
+		#endif
 		for (rx_inf = 0; rx_inf < CONFIG.eths_num; rx_inf++) {
 
 			static uint16_t len;
