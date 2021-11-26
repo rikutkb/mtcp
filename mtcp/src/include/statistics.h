@@ -10,6 +10,8 @@
 #include "fhash.h"
 #include "tcp_util.h"
 #include <math.h>
+#define MAX_PRIORITY 2
+#define THROUGHPUT_TH 100
 #define POW2(x) (x*x)
 typedef struct statistic{
     uint8_t packet_recv_num;

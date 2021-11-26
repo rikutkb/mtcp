@@ -70,6 +70,7 @@ void AddedPacketStatistics(struct hashtable *ht,uint32_t saddr,int ip_len){
 
 int get_average(struct hashtable *ht, statistic *stat_ave){
 	uint8_t valid_ips=0;
+	ip_statistic *walk;
 
 	for (int i = 0; i < ht->bins; i++){
 		TAILQ_FOREACH(walk, &ht->ht_table[i], links) {
@@ -90,6 +91,7 @@ int get_average(struct hashtable *ht, statistic *stat_ave){
 int get_dispresion(struct hashtable *ht, statistic stat_ave, statistic *stat_dis){
 	statistic stat_sum;
 	int valid_ips = 0;
+	ip_statistic *walk;
 	for (int i = 0; i < ht->bins; i++){
 		TAILQ_FOREACH(walk, &ht->ht_table[i], links) {
 			if(walk->packet_recv_num>0){
@@ -141,14 +143,17 @@ void* IpWhiteHTSearch(struct hashtable *ht, const void *it){
 }
 
 void update_priority(struct hashtable *ht, statistic stat_ave, statistic stat_dis){
-	ip_statistic *ip_stat;
-	uint32_t throughput_def = 100;
+	ip_statistic *walk;
 	for (int i = 0; i < ht->bins; i++){
 		TAILQ_FOREACH(walk, &ht->ht_table[i], links) {
-			if(walk->packet_recv_num > MAX(throughput_def,stat_ave.packet_recv_num+stat_dis.packet_recv_num*2)){
-				walk->priority--;
+			if(walk->packet_recv_num > MAX(THROUGHPUT_TH,stat_ave.packet_recv_num+stat_dis.packet_recv_num*2)){
+				if(walk->priority>0){
+					walk->priority--;
+				}
 			}else{
-				walk->priority++;
+				if(walk->priority<MAX_PRIORITY){
+					walk->priority++;
+				}
 			}
 			walk->packet_recv_num = 0;
 
