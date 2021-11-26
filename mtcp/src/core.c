@@ -795,10 +795,11 @@ RunMainLoop(struct mtcp_thread_context *ctx)
 		if(cur_ts.tv_sec > pre_statistic_time+statistic_duration){
 			pre_statistic_time = cur_ts.tv_sec;
 			if(packet_num > attack_threthold){
+				is_attacking = 1;
 				get_statistics(mtcp->ip_stat_table);
 
 			}else{//not attacking
-
+				is_attacking = 0;
 			}
 			packet_num = 0;
 		}
@@ -815,7 +816,7 @@ RunMainLoop(struct mtcp_thread_context *ctx)
 				if (pktbuf != NULL){
 					#if defined(USE_DDOSPROT)
 						struct iphdr* iph = (struct iphdr *)(pktbuf + sizeof(struct ethhdr));
-						if(JudgeDropbyIp(mtcp->ip_stat_table,iph->saddr)){
+						if(is_attacking && JudgeDropbyIp(mtcp->ip_stat_table,iph->saddr)){
 							continue;
 						}
 					#endif

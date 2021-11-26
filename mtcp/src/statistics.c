@@ -68,29 +68,43 @@ void AddedPacketStatistics(struct hashtable *ht,uint32_t saddr,int ip_len){
 
 }
 
-statistic get_average(struct hashtable *ht){
-	statistic stat_ave;
+int get_average(struct hashtable *ht, statistic *stat_ave){
+	uint8_t valid_ips=0;
 
-	for (int i = 0; i < 3; i++){
-
-	}
-    //全てのホワイトリストのパケット数、スループットを計算
-	return stat_ave;
-}
-statistic get_dispresion(struct hashtable *ht, statistic stat_ave){
-	statistic stat_sum;
-	int valid_ips = 0;
-	for (int i = 0; i < 3; i++){
-
+	for (int i = 0; i < ht->bins; i++){
+		TAILQ_FOREACH(walk, &ht->ht_table[i], links) {
+			if(walk->packet_recv_num>0){
+				stat_ave->packet_recv_num+=walk->packet_recv_num;
+				valid_ips++;
+			}
+		}
 	}
 	if(valid_ips>0){
-		stat_sum.packet_recv_num /= valid_ips;
-		stat_sum.packet_recv_num = sqrt(stat_sum.packet_recv_num);
-
+		stat_ave->packet_recv_num/=valid_ips;
 	}else{
+		return 0;
+	}
+    //全てのホワイトリストのパケット数、スループットを計算
+	return 1;
+}
+int get_dispresion(struct hashtable *ht, statistic stat_ave, statistic *stat_dis){
+	statistic stat_sum;
+	int valid_ips = 0;
+	for (int i = 0; i < ht->bins; i++){
+		TAILQ_FOREACH(walk, &ht->ht_table[i], links) {
+			if(walk->packet_recv_num>0){
+				stat_sum.packet_recv_num+=POW2(walk->packet_recv_num - stat_ave.packet_recv_num);
+			}
+		}
+	}
+	if(valid_ips>1){
+		stat_sum.packet_recv_num/=(valid_ips-1);
+		stat_dis->packet_recv_num = (uint8_t)sqrt(stat_sum.packet_recv_num);
+	}else{
+		return 0;
 	}
 
-	return stat_sum;
+	return 1;
 
     //ホワイトリストのスループットをリセット
 
@@ -98,10 +112,15 @@ statistic get_dispresion(struct hashtable *ht, statistic stat_ave){
 
 void get_statistics(mtcp_manager_t mtcp){
     statistic stat_ave;
-    stat_ave = get_average(mtcp->ip_stat_table);
-	statistic stat_dis;
-    stat_dis = get_dispresion(mtcp->ip_stat_table,stat_ave);
-    update_priority(mtcp->ip_stat_table,stat_ave,stat_dis);
+    if(get_average(mtcp->ip_stat_table,&stat_ave)){
+		statistic stat_dis;
+		if(get_dispresion(mtcp->ip_stat_table,stat_ave,&stat_dis)){
+			update_priority(mtcp->ip_stat_table,stat_ave,stat_dis);
+			return;
+		}
+	}
+	//reset_priority???
+
 }
 void* IpWhiteHTSearch(struct hashtable *ht, const void *it){
 	int idx;
@@ -124,12 +143,18 @@ void* IpWhiteHTSearch(struct hashtable *ht, const void *it){
 void update_priority(struct hashtable *ht, statistic stat_ave, statistic stat_dis){
 	ip_statistic *ip_stat;
 	uint32_t throughput_def = 100;
-	for (int i = 0; i < 3; i++){//do all parameter
-		
-		if(ip_stat->packet_recv_num > MAX(throughput_def,stat_ave.packet_recv_num+stat_dis.packet_recv_num*2)){
-			ip_stat->priority--;
-			ip_stat->packet_recv_num = 0;
+	for (int i = 0; i < ht->bins; i++){
+		TAILQ_FOREACH(walk, &ht->ht_table[i], links) {
+			if(walk->packet_recv_num > MAX(throughput_def,stat_ave.packet_recv_num+stat_dis.packet_recv_num*2)){
+				walk->priority--;
+			}else{
+				walk->priority++;
+			}
+			walk->packet_recv_num = 0;
+
+
 		}
+		
 	}
 }
 
