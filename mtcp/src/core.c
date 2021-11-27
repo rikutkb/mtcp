@@ -794,7 +794,7 @@ RunMainLoop(struct mtcp_thread_context *ctx)
 		packet_num++;
 		if(cur_ts.tv_sec > pre_statistic_time+statistic_duration){
 			pre_statistic_time = cur_ts.tv_sec;
-			if(packet_num > attack_threthold){
+			if(1){
 				is_attacking = 1;
 				get_statistics(mtcp->ip_stat_table);
 
@@ -815,10 +815,10 @@ RunMainLoop(struct mtcp_thread_context *ctx)
 				pktbuf = mtcp->iom->get_rptr(mtcp->ctx, rx_inf, i, &len);
 				if (pktbuf != NULL){
 					#if defined(USE_DDOSPROT)
-						struct iphdr* iph = (struct iphdr *)(pktbuf + sizeof(struct ethhdr));
-						if(is_attacking && JudgeDropbyIp(mtcp->ip_stat_table,iph->saddr)){
-							continue;
-						}
+						// struct iphdr* iph = (struct iphdr *)(pktbuf + sizeof(struct ethhdr));
+						// if(is_attacking && JudgeDropbyIp(mtcp->ip_stat_table,iph->saddr)){
+						// 	continue;
+						// }
 					#endif
 					ProcessPacket(mtcp, rx_inf, ts, pktbuf, len);
 				}
@@ -963,12 +963,12 @@ InitializeMTCPManager(struct mtcp_thread_context* ctx)
 	}
 #endif
 #if defined(USE_DDOSPROT)
-	mtcp->ip_stat_table = CreateHashtable(IPHashFlow, EqualIP, NUM_BINS_FLOWS);
+	mtcp->ip_stat_table = CreateIPHashtable(IPHash, EqualIP, NUM_BINS_FLOWS);
 	if (!mtcp->ip_stat_table) {
 		CTRACE_ERROR("Failed to allocate tcp sid lookup table.\n");
 		return NULL;
 	}
-	#endif
+#endif
 	mtcp->listeners = CreateHashtable(HashListener, EqualListener, NUM_BINS_LISTENERS);
 	if (!mtcp->listeners) {
 		CTRACE_ERROR("Failed to allocate listener table.\n");
@@ -1288,7 +1288,7 @@ MTCPRunThread(void *arg)
 	DestroyHashtable(g_mtcp[cpu]->tcp_sid_table);
 #endif
 #if defined(USE_DDOSPROT)
-	DestroyHashtable(g_mtcp[cpu]->ip_stat_table);
+	DestroyIPHashtable(g_mtcp[cpu]->ip_stat_table);
 #endif
 	DestroyHashtable(g_mtcp[cpu]->listeners);
 	

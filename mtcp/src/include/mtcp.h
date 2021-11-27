@@ -22,7 +22,9 @@
 #include "logger.h"
 #include "stat.h"
 #include "io_module.h"
-
+#if defined(USE_DDOSPROT)
+#include "statistics.h"
+#endif
 #ifdef ENABLE_ONVM
 #include "onvm_nflib.h"
 #endif
@@ -230,7 +232,7 @@ struct mtcp_manager
 	struct hashtable *white_list;
 #endif
 #if defined(USE_DDOSPROT)
-	struct hashtable *ip_stat_table;
+	struct ip_hashtable *ip_stat_table;
 #endif
 
 	uint32_t s_index:24;		/* stream index */
