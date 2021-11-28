@@ -1,5 +1,6 @@
 #include "statistics.h"
 #include "debug.h"
+#if defined(USE_DDOSPROT)
 
 struct ip_hashtable *CreateIPHashtable(unsigned int (*hashfn) (const void *), int (*eqfn) (const void *, const void *),int bins){
 	int i;
@@ -36,7 +37,7 @@ void DestroyIPHashtable(struct ip_hashtable *ht){
 }
 
 
-int StreamIPHTInsert(struct ip_hashtable *ht, void *it){
+int IPHTInsert(struct ip_hashtable *ht, void *it){
 	/* create an entry*/ 
 	int idx;
 	ip_statistic *item = (ip_statistic *)it;
@@ -50,7 +51,7 @@ int StreamIPHTInsert(struct ip_hashtable *ht, void *it){
 	
 	return 0;
 }
-void* StreamIPHTRemove(struct ip_hashtable *ht, void *it){
+void* IPHTRemove(struct ip_hashtable *ht, void *it){
 
 	hash_ip_head *head;
 	ip_statistic *item = (ip_statistic *)it;
@@ -61,7 +62,7 @@ void* StreamIPHTRemove(struct ip_hashtable *ht, void *it){
 
 	return (item);
 }
-void *StreamIPHTSearch(struct ip_hashtable *ht, const void *it){
+void *IPHTSearch(struct ip_hashtable *ht, const void *it){
 	int idx;
 	const ip_statistic *item = (const ip_statistic *)it;
 	ip_statistic *walk;
@@ -78,22 +79,12 @@ void *StreamIPHTSearch(struct ip_hashtable *ht, const void *it){
 }
 
 
-struct ip_statistic* CreateNewIpEntry(mtcp_manager_t mtcp, uint32_t saddr){
-	struct ip_statistic *cur_ip_stat;
-	struct ip_statistic a;
-	cur_ip_stat = &a;
-	//do alloc memory
-	cur_ip_stat->ip = saddr;
-	cur_ip_stat->priority  = 1;
-	return cur_ip_stat;
-
-}
 int JudgeDropbyIp(struct ip_hashtable *ht,uint32_t saddr){
 	//if is attacking
 	struct ip_statistic *cur_ip_stat = NULL;
 	struct ip_statistic ip_stat;
 	ip_stat.ip = saddr;
-	if (!(cur_ip_stat = IpWhiteHTSearch(ht, &ip_stat))) {// not in hashtable
+	if (!(cur_ip_stat = IPHTSearch(ht, &ip_stat))) {// not in hashtable
 		return 0;
 	}
 	TRACE_INFO("found in ht");
@@ -108,16 +99,14 @@ int JudgeDropbyIp(struct ip_hashtable *ht,uint32_t saddr){
 	}
 	
 }
-int EqualIP(const void *ip1, const void *ip2)
-{
+int EqualIP(const void *ip1, const void *ip2){
 	TRACE_INFO("equal");
 	struct ip_statistic *ip_1 = (const ip_statistic *)ip1;
 	struct ip_statistic *ip_2 = (const ip_statistic *)ip2;
 
 	return (ip_1->ip==ip_2->ip);
 }
-unsigned int IPHash(const void *saddr)
-{
+unsigned int IPHash(const void *saddr){
     uint32_t *saddr_ = (uint32_t *)saddr;
 	unsigned int hash, i;
 	char *key = (char *)&saddr_;
@@ -134,16 +123,38 @@ unsigned int IPHash(const void *saddr)
 	return hash & (3 - 1);
 
 }
-void AddedPacketStatistics(struct ip_hashtable *ht,uint32_t saddr,int ip_len){
+ip_statistic* CreateIPStat(mtcp_manager_t mtcp, uint32_t ip){
+	ip_statistic *ip_stat = NULL;
+	pthread_mutex_lock(&mtcp->ctx->ip_pool_lock);
+	ip_stat = (ip_statistic *)MPAllocateChunk(mtcp->ip_pool);
+	if(!ip_stat){
+		TRACE_ERROR("Cannot allocate memory for the ip_stat. "
+				"CONFIG.max_concurrency: %d, concurrent: %u\n", 
+				CONFIG.max_concurrency, mtcp->flow_cnt);
+		pthread_mutex_unlock(&mtcp->ctx->ip_pool_lock);
+		return NULL;
+	}
+	memset(ip_stat, 0, sizeof(ip_statistic));
+	ip_stat->ip = ip;
+	ip_stat->priority = 1;
+	int ret = IPHTInsert(mtcp->ip_stat_table, ip_stat);
+	if(ret<0){
+		TRACE_ERROR("ip %d: "
+				"Failed to insert the ip into hash table.\n", ip_stat->ip);
+		MPFreeChunk(mtcp->ip_pool, ip_stat);
+		pthread_mutex_unlock(&mtcp->ctx->ip_pool_lock);
+		return NULL;
+	}
+	pthread_mutex_unlock(&mtcp->ctx->ip_pool_lock);
+	return ip_stat;
+
+}
+void AddedPacketStatistics(mtcp_manager_t mtcp, struct ip_hashtable *ht,uint32_t saddr,int ip_len){
 	ip_statistic *cur_ip_stat = NULL;
 	ip_statistic ip_stat;
 	ip_stat.ip = saddr;
-	if (!(cur_ip_stat = IpWhiteHTSearch(ht, &ip_stat))) {
-		//cur_ip_stat = CreateNew
-		if(!cur_ip_stat){
-			printf("cannot created ht");
-			return;
-		}
+	if (!(cur_ip_stat = IPHTSearch(ht, &ip_stat))) {
+		cur_ip_stat = CreateIPStat(mtcp,saddr);
 	}
 
 }
@@ -205,27 +216,6 @@ void get_statistics(mtcp_manager_t mtcp){
 	//reset_priority???
 
 }
-void* IpWhiteHTSearch(struct ip_hashtable *ht, const void *it){
-	int idx;
-
-	const ip_statistic *item = (const ip_statistic *)it;
-
-	ip_statistic *walk;
-	hash_ip_head *head;
-	idx = ht->hashfn(item);
-	head = &ht->ht_table[ht->hashfn(item)];
-
-	TAILQ_FOREACH(walk, head, links) {
-		TRACE_INFO("--");
-
-		if (ht->eqfn(walk, item)) 
-			return walk;
-	}
-
-	UNUSED(idx);
-	return NULL;
-}
-
 void update_priority(struct ip_hashtable *ht, statistic stat_ave, statistic stat_dis){
 	ip_statistic *walk;
 	for (int i = 0; i < ht->bins; i++){
@@ -248,3 +238,4 @@ void update_priority(struct ip_hashtable *ht, statistic stat_ave, statistic stat
 }
 
 
+#endif

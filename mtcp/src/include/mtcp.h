@@ -233,6 +233,7 @@ struct mtcp_manager
 #endif
 #if defined(USE_DDOSPROT)
 	struct ip_hashtable *ip_stat_table;
+	mem_pool_t ip_pool;	
 #endif
 
 	uint32_t s_index:24;		/* stream index */
@@ -333,6 +334,9 @@ struct mtcp_thread_context
 	pthread_mutex_t smap_lock;
 	pthread_mutex_t flow_pool_lock;
 	pthread_mutex_t socket_pool_lock;
+#if defined(USE_DDOSPROT)
+	pthread_mutex_t ip_pool_lock;
+#endif
 
 #if LOCK_STREAM_QUEUE
 #if USE_SPIN_LOCK

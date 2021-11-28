@@ -815,12 +815,13 @@ RunMainLoop(struct mtcp_thread_context *ctx)
 				pktbuf = mtcp->iom->get_rptr(mtcp->ctx, rx_inf, i, &len);
 				if (pktbuf != NULL){
 					#if defined(USE_DDOSPROT)
-						// struct iphdr* iph = (struct iphdr *)(pktbuf + sizeof(struct ethhdr));
-						// if(is_attacking && JudgeDropbyIp(mtcp->ip_stat_table,iph->saddr)){
-						// 	continue;
-						// }
+						struct iphdr* iph = (struct iphdr *)(pktbuf + sizeof(struct ethhdr));
+						if(is_attacking && JudgeDropbyIp(mtcp->ip_stat_table,iph->saddr)){
+							continue;
+						}
 					#endif
 					ProcessPacket(mtcp, rx_inf, ts, pktbuf, len);
+					
 				}
 #ifdef NETSTAT
 				else
@@ -999,6 +1000,16 @@ InitializeMTCPManager(struct mtcp_thread_context* ctx)
 		CTRACE_ERROR("Failed to allocate tcp send variable pool.\n");
 		return NULL;
 	}
+	#if defined(USE_DDOSPROT)
+	sprintf(pool_name, "ip_pool_%d", ctx->cpu);
+	mtcp->ip_pool = MPCreate(pool_name, sizeof(struct ip_statistic), 
+			sizeof(struct ip_statistic) * CONFIG.max_concurrency);
+	if (!mtcp->ip_pool) {
+		CTRACE_ERROR("Failed to allocate ip white list variable pool.\n");
+		return NULL;
+	}
+	#endif
+
 #else
 	mtcp->flow_pool = MPCreate(sizeof(tcp_stream),
 				   sizeof(tcp_stream) * CONFIG.max_concurrency);
@@ -1238,7 +1249,12 @@ MTCPRunThread(void *arg)
 		perror("pthread_mutex_init of ctx->socket_pool_lock\n");
 		exit(-1);
 	}
-
+	#if defined(USE_DDOSPROT)
+	if (pthread_mutex_init(&ctx->ip_pool_lock, NULL)) {
+		perror("pthread_mutex_init of ctx->ip_pool_lock\n");
+		exit(-1);
+	}
+	#endif
 	SQ_LOCK_INIT(&ctx->connect_lock, "ctx->connect_lock", exit(-1));
 	SQ_LOCK_INIT(&ctx->close_lock, "ctx->close_lock", exit(-1));
 	SQ_LOCK_INIT(&ctx->reset_lock, "ctx->reset_lock", exit(-1));
