@@ -2,6 +2,7 @@
 Makefile
 autom4te.cache/
 build.sh
+mbuild.sh
 config.h
 config.log
 config.status
