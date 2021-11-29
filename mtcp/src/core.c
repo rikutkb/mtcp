@@ -817,6 +817,7 @@ RunMainLoop(struct mtcp_thread_context *ctx)
 					#if defined(USE_DDOSPROT)
 						struct iphdr* iph = (struct iphdr *)(pktbuf + sizeof(struct ethhdr));
 						if(is_attacking && JudgeDropbyIp(mtcp->ip_stat_table,iph->saddr)){
+							TRACE_INFO("droped packet");
 							continue;
 						}
 					#endif
@@ -964,7 +965,7 @@ InitializeMTCPManager(struct mtcp_thread_context* ctx)
 	}
 #endif
 #if defined(USE_DDOSPROT)
-	mtcp->ip_stat_table = CreateIPHashtable(IPHash, EqualIP, NUM_BINS_FLOWS);
+	mtcp->ip_stat_table = CreateIPHashtable(IPHash, EqualIP, NUM_BINS_IPS);
 	if (!mtcp->ip_stat_table) {
 		CTRACE_ERROR("Failed to allocate tcp sid lookup table.\n");
 		return NULL;

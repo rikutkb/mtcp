@@ -12,6 +12,7 @@
     #include "memory_mgt.h"
     #define MAX_PRIORITY 2
     #define THROUGHPUT_TH 100
+    #define NUM_BINS_IPS 1021
     #define POW2(x) (x*x)
     #define MAX(a, b) ((a)>(b)?(a):(b))
     #define IS_IP_TABLE(x)	(x == IPHash)

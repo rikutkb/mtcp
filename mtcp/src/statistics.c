@@ -87,20 +87,17 @@ int JudgeDropbyIp(struct ip_hashtable *ht,uint32_t saddr){
 	if (!(cur_ip_stat = IPHTSearch(ht, &ip_stat))) {// not in hashtable
 		return 0;
 	}
-	TRACE_INFO("found in ht");
-	return 0;
 	switch(cur_ip_stat->priority){
 		case 2:
 			return 0;
 		case 1://10%
-			return rand()%10+1>=1;
+			return rand()%10+1<=1;
 		case 0://40%
-			return rand()%10+1>=4;
+			return rand()%10+1<=4;
 	}
 	
 }
 int EqualIP(const void *ip1, const void *ip2){
-	TRACE_INFO("equal");
 	struct ip_statistic *ip_1 = (const ip_statistic *)ip1;
 	struct ip_statistic *ip_2 = (const ip_statistic *)ip2;
 
@@ -137,6 +134,9 @@ ip_statistic* CreateIPStat(mtcp_manager_t mtcp, uint32_t ip){
 	memset(ip_stat, 0, sizeof(ip_statistic));
 	ip_stat->ip = ip;
 	ip_stat->priority = 1;
+	ip_stat->packet_recv_num = 0;
+	ip_stat->throughput_send_num=0;
+	ip_stat->packet_rtt=0;
 	int ret = IPHTInsert(mtcp->ip_stat_table, ip_stat);
 	if(ret<0){
 		TRACE_ERROR("ip %d: "
@@ -162,13 +162,11 @@ void AddedPacketStatistics(mtcp_manager_t mtcp, struct ip_hashtable *ht,uint32_t
 int get_average(struct ip_hashtable *ht, statistic *stat_ave){
 	uint8_t valid_ips=0;
 	ip_statistic *walk;
-
 	for (int i = 0; i < ht->bins; i++){
 		TAILQ_FOREACH(walk, &ht->ht_table[i], links) {
-			if(walk->packet_recv_num>0){
-				stat_ave->packet_recv_num+=walk->packet_recv_num;
-				valid_ips++;
-			}
+			stat_ave->packet_recv_num++;
+			stat_ave->packet_recv_num+=walk->packet_recv_num;
+			valid_ips++;
 		}
 	}
 	if(valid_ips>0){
@@ -206,13 +204,13 @@ int get_dispresion(struct ip_hashtable *ht, statistic stat_ave, statistic *stat_
 void get_statistics(mtcp_manager_t mtcp){
     statistic stat_ave;
 	TRACE_INFO("check statistcs avaiable");
-    // if(get_average(mtcp->ip_stat_table,&stat_ave)){
-	// 	statistic stat_dis;
-	// 	if(get_dispresion(mtcp->ip_stat_table,stat_ave,&stat_dis)){
-	// 		update_priority(mtcp->ip_stat_table,stat_ave,stat_dis);
-	// 		return;
-	// 	}
-	// }
+    if(get_average(mtcp->ip_stat_table,&stat_ave)){
+		statistic stat_dis;
+		if(get_dispresion(mtcp->ip_stat_table,stat_ave,&stat_dis)){
+			update_priority(mtcp->ip_stat_table,stat_ave,stat_dis);
+			return;
+		}
+	}
 	//reset_priority???
 
 }

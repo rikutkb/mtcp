@@ -1216,8 +1216,6 @@ ProcessTCPPacket(mtcp_manager_t mtcp,
 	uint16_t check;
 	int ret;
 	int rc = -1;
-	TRACE_INFO("process tcp");
-
 
 
 	/* Check ip packet invalidation */	
