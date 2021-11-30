@@ -38,6 +38,7 @@
         struct ip_statistic *tqh_first;
         struct ip_statistic **tqh_last;
     } list_ip_head;
+
     /* hashtable structure */
     struct ip_hashtable {
         uint32_t bins;
@@ -65,7 +66,7 @@
     void AddedPacketStatistics(mtcp_manager_t mtcp, struct ip_hashtable *ht,uint32_t saddr,int ip_len);
     int get_average(struct ip_hashtable *ht, statistic *stat_ave);
     int get_dispresion(struct ip_hashtable *ht,  statistic stat_ave, statistic *stat_dis);
-    void get_statistics(mtcp_manager_t mtcp);
+    void get_statistics(struct ip_hashtable *ht);
     void update_priority(struct ip_hashtable *ht, statistic stat_ave, statistic stat_dis);
     #endif
 #endif

@@ -794,6 +794,7 @@ RunMainLoop(struct mtcp_thread_context *ctx)
 		packet_num++;
 		if(cur_ts.tv_sec > pre_statistic_time+statistic_duration){
 			pre_statistic_time = cur_ts.tv_sec;
+			TRACE_INFO("%d____",mtcp->ip_stat_table->bins);
 			if(1){
 				is_attacking = 1;
 				get_statistics(mtcp->ip_stat_table);

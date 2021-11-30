@@ -13,7 +13,6 @@ struct ip_hashtable *CreateIPHashtable(unsigned int (*hashfn) (const void *), in
 	ht->hashfn = hashfn;
 	ht->eqfn = eqfn;
 	ht->bins = bins;
-
 	/* creating bins */
 	if (IS_IP_TABLE(hashfn)) {
 		ht->ht_table = calloc(bins, sizeof(hash_ip_head));
@@ -156,7 +155,8 @@ void AddedPacketStatistics(mtcp_manager_t mtcp, struct ip_hashtable *ht,uint32_t
 	if (!(cur_ip_stat = IPHTSearch(ht, &ip_stat))) {
 		cur_ip_stat = CreateIPStat(mtcp,saddr);
 	}
-
+	cur_ip_stat->packet_recv_num++;
+	TRACE_INFO("%d!!",ht->bins);
 }
 
 int get_average(struct ip_hashtable *ht, statistic *stat_ave){
@@ -164,9 +164,10 @@ int get_average(struct ip_hashtable *ht, statistic *stat_ave){
 	ip_statistic *walk;
 	for (int i = 0; i < ht->bins; i++){
 		TAILQ_FOREACH(walk, &ht->ht_table[i], links) {
-			stat_ave->packet_recv_num++;
-			stat_ave->packet_recv_num+=walk->packet_recv_num;
-			valid_ips++;
+			if(walk->packet_recv_num>=0){
+				valid_ips++;
+
+			}
 		}
 	}
 	if(valid_ips>0){
@@ -181,9 +182,11 @@ int get_dispresion(struct ip_hashtable *ht, statistic stat_ave, statistic *stat_
 	statistic stat_sum;
 	int valid_ips = 0;
 	ip_statistic *walk;
+
 	for (int i = 0; i < ht->bins; i++){
 		TAILQ_FOREACH(walk, &ht->ht_table[i], links) {
 			if(walk->packet_recv_num>0){
+				valid_ips++;
 				stat_sum.packet_recv_num+=POW2(walk->packet_recv_num - stat_ave.packet_recv_num);
 			}
 		}
@@ -191,6 +194,8 @@ int get_dispresion(struct ip_hashtable *ht, statistic stat_ave, statistic *stat_
 	if(valid_ips>1){
 		stat_sum.packet_recv_num/=(valid_ips-1);
 		stat_dis->packet_recv_num = (uint8_t)sqrt(stat_sum.packet_recv_num);
+	}else if(valid_ips==1){
+		return 1;
 	}else{
 		return 0;
 	}
@@ -201,21 +206,22 @@ int get_dispresion(struct ip_hashtable *ht, statistic stat_ave, statistic *stat_
 
 }
 
-void get_statistics(mtcp_manager_t mtcp){
+void get_statistics(struct ip_hashtable *ht){
     statistic stat_ave;
-	TRACE_INFO("check statistcs avaiable");
-    if(get_average(mtcp->ip_stat_table,&stat_ave)){
+    if(get_average(ht,&stat_ave)){
 		statistic stat_dis;
-		if(get_dispresion(mtcp->ip_stat_table,stat_ave,&stat_dis)){
-			update_priority(mtcp->ip_stat_table,stat_ave,stat_dis);
+		if(get_dispresion(ht,stat_ave,&stat_dis)){
+			update_priority(ht,stat_ave,stat_dis);
 			return;
+		}else{
 		}
+	}else{
 	}
-	//reset_priority???
 
 }
 void update_priority(struct ip_hashtable *ht, statistic stat_ave, statistic stat_dis){
 	ip_statistic *walk;
+	TRACE_INFO("average is %d, dispression is %d",stat_ave.packet_recv_num,stat_dis.packet_recv_num);
 	for (int i = 0; i < ht->bins; i++){
 		TAILQ_FOREACH(walk, &ht->ht_table[i], links) {
 			if(walk->packet_recv_num > MAX(THROUGHPUT_TH,stat_ave.packet_recv_num+stat_dis.packet_recv_num*2)){
