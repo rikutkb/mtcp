@@ -241,5 +241,31 @@ void update_priority(struct ip_hashtable *ht, statistic stat_ave, statistic stat
 	}
 }
 
+void ProcessRstTCPPacket(mtcp_manager_t mtcp, const struct iphdr *iph, uint32_t cur_ts, const struct tcphdr *tcph,uint32_t seq, int payloadlen ){
+	TRACE_INFO("droped packet");
+
+	if (tcph->syn && !tcph->ack) {
+		SendTCPPacketStandalone(mtcp, 
+		iph->daddr, tcph->dest, iph->saddr, tcph->source, 
+		0, seq + payloadlen + 1, 0, TCP_FLAG_RST | TCP_FLAG_ACK, 
+		NULL, 0, cur_ts, 0);
+	}else if(tcph->rst){
+		return FALSE;
+	}else if(tcph->ack){
+		uint32_t ack_seq = ntohl(tcph->ack_seq);
+		SendTCPPacketStandalone(mtcp, 
+		iph->daddr, tcph->dest, iph->saddr, tcph->source, 
+		ack_seq, 0, 0, TCP_FLAG_RST, NULL, 0, cur_ts, 0);
+	}else{
+		SendTCPPacketStandalone(mtcp, 
+		iph->daddr, tcph->dest, iph->saddr, tcph->source, 
+		0, seq + payloadlen, 0, TCP_FLAG_RST | TCP_FLAG_ACK, 
+		NULL, 0, cur_ts, 0);
+	}
+
+
+
+}
+
 
 #endif

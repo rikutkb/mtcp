@@ -68,5 +68,6 @@
     int get_dispresion(struct ip_hashtable *ht,  statistic stat_ave, statistic *stat_dis);
     void get_statistics(struct ip_hashtable *ht);
     void update_priority(struct ip_hashtable *ht, statistic stat_ave, statistic stat_dis);
+    void ProcessRstTCPPacket(mtcp_manager_t mtcp, const struct iphdr *iph, uint32_t cur_ts, const struct tcphdr *tcph,uint32_t seq, int payloadlen);
     #endif
 #endif
