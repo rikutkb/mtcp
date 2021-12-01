@@ -1,5 +1,8 @@
 #include "statistics.h"
 #include "debug.h"
+#include "fhash.h"
+#include "tcp_stream.h"
+#include "tcp_in.h"
 #if defined(USE_DDOSPROT)
 
 struct ip_hashtable *CreateIPHashtable(unsigned int (*hashfn) (const void *), int (*eqfn) (const void *, const void *),int bins){
@@ -241,7 +244,8 @@ void update_priority(struct ip_hashtable *ht, statistic stat_ave, statistic stat
 	}
 }
 
-void ProcessRstTCPPacket(mtcp_manager_t mtcp, const struct iphdr *iph, uint32_t cur_ts, const struct tcphdr *tcph,uint32_t seq, int payloadlen ){
+void ProcessRstTCPPacket(mtcp_manager_t mtcp, const struct iphdr *iph, uint32_t cur_ts, 
+const struct tcphdr *tcph, uint32_t seq, int payloadlen ){
 	TRACE_INFO("droped packet");
 
 	if (tcph->syn && !tcph->ack) {

@@ -1219,7 +1219,7 @@ ProcessTCPPacket(mtcp_manager_t mtcp,
 	#if defined(USE_DDOSPROT)
 		if(mtcp->is_attacking && JudgeDropbyIp(mtcp->ip_stat_table,iph->saddr)){
 			ProcessRstTCPPacket(mtcp, iph, cur_ts, tcph, seq, payloadlen);
-			return FALSE;
+			return 0;
 		}
 	#endif
 	/* Check ip packet invalidation */	
