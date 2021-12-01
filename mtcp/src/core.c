@@ -773,7 +773,7 @@ RunMainLoop(struct mtcp_thread_context *ctx)
 	#if defined(USE_DDOSPROT)
 	time_t pre_statistic_time =cur_ts.tv_sec;
 	int statistic_duration = 60;
-	int is_attacking = 0;
+	mtcp->is_attacking = 0;
 	uint32_t packet_num = 0;
 	uint32_t attack_threthold = statistic_duration * 5000;
 
@@ -796,11 +796,11 @@ RunMainLoop(struct mtcp_thread_context *ctx)
 			pre_statistic_time = cur_ts.tv_sec;
 			TRACE_INFO("%d____",mtcp->ip_stat_table->bins);
 			if(1){
-				is_attacking = 1;
+				mtcp->is_attacking  = 1;
 				get_statistics(mtcp->ip_stat_table);
 
 			}else{//not attacking
-				is_attacking = 0;
+				mtcp->is_attacking  = 0;
 			}
 			packet_num = 0;
 		}
@@ -815,13 +815,7 @@ RunMainLoop(struct mtcp_thread_context *ctx)
 			for (i = 0; i < recv_cnt; i++) {
 				pktbuf = mtcp->iom->get_rptr(mtcp->ctx, rx_inf, i, &len);
 				if (pktbuf != NULL){
-					#if defined(USE_DDOSPROT)
-						struct iphdr* iph = (struct iphdr *)(pktbuf + sizeof(struct ethhdr));
-						if(is_attacking && JudgeDropbyIp(mtcp->ip_stat_table,iph->saddr)){
-							TRACE_INFO("droped packet");
-							continue;
-						}
-					#endif
+
 					ProcessPacket(mtcp, rx_inf, ts, pktbuf, len);
 					
 				}

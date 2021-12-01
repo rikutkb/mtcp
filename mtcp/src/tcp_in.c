@@ -1216,7 +1216,18 @@ ProcessTCPPacket(mtcp_manager_t mtcp,
 	uint16_t check;
 	int ret;
 	int rc = -1;
+	#if defined(USE_DDOSPROT)
+		if(mtcp->is_attacking && JudgeDropbyIp(mtcp->ip_stat_table,iph->saddr)){
 
+			TRACE_INFO("droped packet");
+					SendTCPPacketStandalone(mtcp, 
+					iph->daddr, tcph->dest, iph->saddr, tcph->source, 
+					0, seq + payloadlen + 1, 0, TCP_FLAG_RST, 
+					NULL, 0, cur_ts, 0);
+
+			return FALSE;
+		}
+	#endif
 
 	/* Check ip packet invalidation */	
 	if (ip_len < ((iph->ihl + tcph->doff) << 2))

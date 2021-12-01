@@ -233,6 +233,7 @@ struct mtcp_manager
 #endif
 #if defined(USE_DDOSPROT)
 	struct ip_hashtable *ip_stat_table;
+	int is_attacking;
 	mem_pool_t ip_pool;	
 #endif
 
