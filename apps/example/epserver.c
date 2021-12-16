@@ -237,7 +237,7 @@ HandleReadEvent(struct thread_context *ctx, int sockid, struct server_vars *sv)
 	/* Find file in cache */
 	scode = 404;
 	for (i = 0; i < nfiles; i++) {
-		if (1){//strcmp(sv->fname, fcache[i].fullname) == 0) {
+		if (strcmp(sv->fname, fcache[i].fullname) == 0) {
 			sv->fsize = fcache[i].size;
 			sv->fidx = i;
 			scode = 200;

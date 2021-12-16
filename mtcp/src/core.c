@@ -10,6 +10,7 @@
 #include <assert.h>
 #include <sched.h>
 
+
 #include "cpu.h"
 #include "ps.h"
 #include "eth_in.h"
@@ -772,13 +773,15 @@ RunMainLoop(struct mtcp_thread_context *ctx)
 	int thresh;
 	#if defined(USE_DDOSPROT)
 	time_t pre_statistic_time =cur_ts.tv_sec;
-	int statistic_duration = 60;
+	time_t pre_check_time = cur_ts.tv_sec;
 	mtcp->is_attacking = 0;
 	uint32_t packet_num = 0;
-	uint32_t attack_threthold = statistic_duration * 5000;
-
+	uint32_t attack_threthold = STATIC_DURATION * 5000;
+	int is_drop;
 	#endif
 	gettimeofday(&cur_ts, NULL);
+
+
 	TRACE_DBG("CPU %d: mtcp thread running.\n", ctx->cpu);
 
 	ts = ts_prev = 0;
@@ -791,18 +794,25 @@ RunMainLoop(struct mtcp_thread_context *ctx)
 		ts = TIMEVAL_TO_TS(&cur_ts);
 		mtcp->cur_ts = ts;
 		#if defined(USE_DDOSPROT)
-		packet_num++;
-		if(cur_ts.tv_sec > pre_statistic_time+statistic_duration){
+		if(cur_ts.tv_sec > pre_check_time + 1){
+			if(packet_num > THROUGHPUT_TH){
+				mtcp->is_attacking = 1;
+			}else if(packet_num < 100){
+				mtcp->is_attacking = 0;
+			}
+			packet_num = 0;
+			reset_ip_pps(mtcp->ip_stat_table);
+
+		}
+		if(cur_ts.tv_sec > pre_statistic_time+STATIC_DURATION){
 			pre_statistic_time = cur_ts.tv_sec;
-			TRACE_INFO("%d____",mtcp->ip_stat_table->bins);
-			if(1){
+			if(1){//packet_num>=THROUGHPUT_TH*STATIC_DURATION
 				mtcp->is_attacking  = 1;
 				get_statistics(mtcp->ip_stat_table);
 
 			}else{//not attacking
 				mtcp->is_attacking  = 0;
 			}
-			packet_num = 0;
 		}
 		#endif
 		for (rx_inf = 0; rx_inf < CONFIG.eths_num; rx_inf++) {
@@ -815,7 +825,17 @@ RunMainLoop(struct mtcp_thread_context *ctx)
 			for (i = 0; i < recv_cnt; i++) {
 				pktbuf = mtcp->iom->get_rptr(mtcp->ctx, rx_inf, i, &len);
 				if (pktbuf != NULL){
+					#if defined(USE_DDOSPROT)
+					packet_num++;
 
+					struct iphdr* iph = (struct iphdr *)(pktbuf + sizeof(struct ethhdr));
+					is_drop = JudgeDropbyIp(mtcp->ip_stat_table,iph->saddr);
+					if(is_drop<1&&mtcp->is_attacking){
+						TRACE_INFO("%d:%d:is drop",iph->saddr,is_drop);
+						continue;
+					}
+					#endif
+					
 					ProcessPacket(mtcp, rx_inf, ts, pktbuf, len);
 					
 				}

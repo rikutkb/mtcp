@@ -81,7 +81,7 @@ void *IPHTSearch(struct ip_hashtable *ht, const void *it){
 }
 
 
-int JudgeDropbyIp(struct ip_hashtable *ht,uint32_t saddr){
+int JudgeDropbyIp(struct ip_hashtable *ht,uint32_t saddr){//if drop return 0
 	//if is attacking
 	struct ip_statistic *cur_ip_stat = NULL;
 	struct ip_statistic ip_stat;
@@ -90,12 +90,16 @@ int JudgeDropbyIp(struct ip_hashtable *ht,uint32_t saddr){
 		return 0;
 	}
 	switch(cur_ip_stat->priority){
-		case 2:
-			return 0;
-		case 1://10%
-			return rand()%10+1<=1;
-		case 0://40%
-			return rand()%10+1<=4;
+		case 4://1%
+			return rand()%100+1<=99?1:-4;
+		case 3://10%
+			return rand()%10+1<=9?1:-3;
+		case 2://30%
+			return rand()%10+1<=8?1:-2;
+		case 1://50%
+			return rand()%10+1<=5?1:-1;
+		case 0://90%
+			return rand()%10+1<=1?1:0;
 	}
 	
 }
@@ -135,7 +139,7 @@ ip_statistic* CreateIPStat(mtcp_manager_t mtcp, uint32_t ip){
 	}
 	memset(ip_stat, 0, sizeof(ip_statistic));
 	ip_stat->ip = ip;
-	ip_stat->priority = 1;
+	ip_stat->priority = 2;
 	ip_stat->packet_recv_num = 0;
 	ip_stat->throughput_send_num=0;
 	ip_stat->packet_rtt=0;
@@ -156,10 +160,19 @@ void AddedPacketStatistics(mtcp_manager_t mtcp, struct ip_hashtable *ht,uint32_t
 	ip_statistic ip_stat;
 	ip_stat.ip = saddr;
 	if (!(cur_ip_stat = IPHTSearch(ht, &ip_stat))) {
+		TRACE_INFO("create ip stat");
 		cur_ip_stat = CreateIPStat(mtcp,saddr);
 	}
 	cur_ip_stat->packet_recv_num++;
-	TRACE_INFO("%d!!",ht->bins);
+	cur_ip_stat->pps++;
+	if(cur_ip_stat->pps>ATTACKER_TH_1){
+		if(cur_ip_stat->pps>ATTACKER_TH_2){
+			cur_ip_stat->priority=0;
+			TRACE_INFO("fast drop");
+			return;
+		}
+		cur_ip_stat->priority=1;
+	}
 }
 
 int get_average(struct ip_hashtable *ht, statistic *stat_ave){
@@ -168,14 +181,21 @@ int get_average(struct ip_hashtable *ht, statistic *stat_ave){
 	for (int i = 0; i < ht->bins; i++){
 		TAILQ_FOREACH(walk, &ht->ht_table[i], links) {
 			if(walk->packet_recv_num>=0){
+				TRACE_INFO("packet recv iiiiii%d",stat_ave->packet_recv_num);
 				valid_ips++;
+				stat_ave->packet_recv_num+=walk->packet_recv_num;
 
 			}
 		}
 	}
+	TRACE_INFO("valid ip num is %d",valid_ips);
 	if(valid_ips>0){
+		TRACE_INFO("packet rec ave is %d",stat_ave->packet_recv_num);
+
 		stat_ave->packet_recv_num/=valid_ips;
+		TRACE_INFO("packet rec ave is %d",stat_ave->packet_recv_num);
 	}else{
+		TRACE_INFO("cannto get ave");
 		return 0;
 	}
     //全てのホワイトリストのパケット数、スループットを計算
@@ -214,20 +234,34 @@ void get_statistics(struct ip_hashtable *ht){
     if(get_average(ht,&stat_ave)){
 		statistic stat_dis;
 		if(get_dispresion(ht,stat_ave,&stat_dis)){
+			TRACE_INFO("average is %d, dispression is %d",stat_ave.packet_recv_num,stat_dis.packet_recv_num);
 			update_priority(ht,stat_ave,stat_dis);
 			return;
 		}else{
+			TRACE_INFO("failed to get stat");
 		}
 	}else{
+		TRACE_INFO("failed to get stat");
+
 	}
 
+}
+
+void reset_ip_pps(struct ip_hashtable *ht){
+	ip_statistic *walk;
+
+	for (int i = 0; i < ht->bins; i++){
+		TAILQ_FOREACH(walk, &ht->ht_table[i], links) {
+			walk->pps = 0;
+		}
+	}
 }
 void update_priority(struct ip_hashtable *ht, statistic stat_ave, statistic stat_dis){
 	ip_statistic *walk;
 	TRACE_INFO("average is %d, dispression is %d",stat_ave.packet_recv_num,stat_dis.packet_recv_num);
 	for (int i = 0; i < ht->bins; i++){
 		TAILQ_FOREACH(walk, &ht->ht_table[i], links) {
-			if(walk->packet_recv_num > MAX(THROUGHPUT_TH,stat_ave.packet_recv_num+stat_dis.packet_recv_num*2)){
+			if(walk->packet_recv_num > MIN(THROUGHPUT_TH,stat_ave.packet_recv_num+stat_dis.packet_recv_num*2)){
 				if(walk->priority>0){
 					walk->priority--;
 				}
@@ -254,7 +288,7 @@ const struct tcphdr *tcph, uint32_t seq, int payloadlen ){
 		0, seq + payloadlen + 1, 0, TCP_FLAG_RST | TCP_FLAG_ACK, 
 		NULL, 0, cur_ts, 0);
 	}else if(tcph->rst){
-		return FALSE;
+		return ;
 	}else if(tcph->ack){
 		uint32_t ack_seq = ntohl(tcph->ack_seq);
 		SendTCPPacketStandalone(mtcp, 

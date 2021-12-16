@@ -138,10 +138,10 @@ ValidateSequence(mtcp_manager_t mtcp, tcp_stream *cur_stream, uint32_t cur_ts,
 		} else {
 			/* valid timestamp */
 			if (TCP_SEQ_GT(ts.ts_val, cur_stream->rcvvar->ts_recent)) {
-				TRACE_INFO("Timestamp update. cur: %u, prior: %u "
-					"(time diff: %uus)\n", 
-					ts.ts_val, cur_stream->rcvvar->ts_recent, 
-					TS_TO_USEC(cur_ts - cur_stream->rcvvar->ts_last_ts_upd));
+				// TRACE_INFO("Timestamp update. cur: %u, prior: %u "
+				// 	"(time diff: %uus)\n", 
+				// 	ts.ts_val, cur_stream->rcvvar->ts_recent, 
+				// 	TS_TO_USEC(cur_ts - cur_stream->rcvvar->ts_last_ts_upd));
 				cur_stream->rcvvar->ts_last_ts_upd = cur_ts;
 			}
 
@@ -1217,10 +1217,10 @@ ProcessTCPPacket(mtcp_manager_t mtcp,
 	int ret;
 	int rc = -1;
 	#if defined(USE_DDOSPROT)
-		if(mtcp->is_attacking && JudgeDropbyIp(mtcp->ip_stat_table,iph->saddr)){
-			ProcessRstTCPPacket(mtcp, iph, cur_ts, tcph, seq, payloadlen);
-			return 0;
-		}
+		// if(mtcp->is_attacking && JudgeDropbyIp(mtcp->ip_stat_table,iph->saddr)){
+		// 	ProcessRstTCPPacket(mtcp, iph, cur_ts, tcph, seq, payloadlen);
+		// 	return 0;
+		// }
 	#endif
 	/* Check ip packet invalidation */	
 	if (ip_len < ((iph->ihl + tcph->doff) << 2))

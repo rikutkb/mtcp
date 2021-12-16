@@ -36,7 +36,7 @@ ParseTCPOptions(tcp_stream *cur_stream,
 				cur_stream->sndvar->mss = *(tcpopt + i++) << 8;
 				cur_stream->sndvar->mss += *(tcpopt + i++);
 				cur_stream->sndvar->eff_mss = cur_stream->sndvar->mss;
-				TRACE_INFO("%d",cur_stream->sndvar->eff_mss);
+				//TRACE_INFO("%d",cur_stream->sndvar->eff_mss);
 #if TCP_OPT_TIMESTAMP_ENABLED
 				cur_stream->sndvar->eff_mss -= (TCP_OPT_TIMESTAMP_LEN + 2);
 #endif

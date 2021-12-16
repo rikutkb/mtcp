@@ -15,23 +15,28 @@
     #include <math.h>
     #include "memory_mgt.h"
     #define MAX_PRIORITY 2
-    #define THROUGHPUT_TH 100
-    #define NUM_BINS_IPS 1021
+    #define THROUGHPUT_TH 1000
+    #define STATIC_DURATION 60
+    #define ATTAKING_CHECK_DURATION 10
+    #define NUM_BINS_IPS 5003
     #define POW2(x) (x*x)
-    #define MAX(a, b) ((a)>(b)?(a):(b))
+    #define MIN(a, b) ((a)<(b)?(a):(b))
     #define IS_IP_TABLE(x)	(x == IPHash)
+    #define ATTACKER_TH_1 20
+    #define ATTACKER_TH_2 30 
     typedef struct statistic{
-        uint8_t packet_recv_num;
+        uint32_t packet_recv_num;
         uint32_t throughput_send_num;
-        uint8_t packet_rtt;
+        uint32_t packet_rtt;
     }statistic;
 
     typedef struct ip_statistic{
         uint32_t ip;
-        uint8_t packet_recv_num;
+        uint32_t packet_recv_num;
         uint32_t throughput_send_num;
-        uint8_t packet_rtt;
+        uint32_t packet_rtt;
         uint8_t priority;
+        uint32_t pps;
         TAILQ_ENTRY(ip_statistic) links;
     }ip_statistic;
     typedef struct hash_ip_head {
@@ -73,6 +78,7 @@
     void get_statistics(struct ip_hashtable *ht);
     void update_priority(struct ip_hashtable *ht, statistic stat_ave, statistic stat_dis);
     void ProcessRstTCPPacket(mtcp_manager_t mtcp, const struct iphdr *iph, uint32_t cur_ts,
-     const struct tcphdr *tcph, uint32_t seq, int payloadlen );
+    const struct tcphdr *tcph, uint32_t seq, int payloadlen );
+    void reset_ip_pps(struct ip_hashtable *ht);
     #endif
 #endif
