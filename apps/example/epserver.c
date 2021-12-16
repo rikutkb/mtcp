@@ -206,6 +206,8 @@ HandleReadEvent(struct thread_context *ctx, int sockid, struct server_vars *sv)
 	if (rd <= 0) {
 		return rd;
 	}
+	printf("%s",sv->request);
+	printf("%d,%d,%d",rd,HTTP_HEADER_LEN,sv->recv_len);
 	memcpy(sv->request + sv->recv_len, 
 			(char *)buf, MIN(rd, HTTP_HEADER_LEN - sv->recv_len));
 	sv->recv_len += rd;
@@ -254,7 +256,12 @@ HandleReadEvent(struct thread_context *ctx, int sockid, struct server_vars *sv)
 		sprintf(keepalive_str, "Keep-Alive");
 	else
 		sprintf(keepalive_str, "Close");
-
+	printf("HTTP/1.1 %d %s\r\n"
+			"Date: %s\r\n"
+			"Server: Webserver on Middlebox TCP (Ubuntu)\r\n"
+			"Content-Length: %ld\r\n"
+			"Connection: %s\r\n\r\n", 
+			scode, StatusCodeToString(scode), t_str, sv->fsize, keepalive_str);
 	sprintf(response, "HTTP/1.1 %d %s\r\n"
 			"Date: %s\r\n"
 			"Server: Webserver on Middlebox TCP (Ubuntu)\r\n"

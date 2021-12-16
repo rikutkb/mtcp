@@ -76,8 +76,8 @@ tcp_stream* CreateNewFlowHTEntry_SC(mtcp_manager_t mtcp, uint32_t cur_ts, const 
 	cur_stream->sndvar->iss = ack_seq;
 	cur_stream->snd_nxt = ack_seq;
 	cur_stream->sndvar->peer_wnd = window;
-	cur_stream->rcvvar->irs = seq;
-	cur_stream->rcv_nxt = seq;
+	cur_stream->rcvvar->irs = seq-1;
+	cur_stream->rcv_nxt = seq-1;
 	cur_stream->sndvar->cwnd = 1;
 	cur_stream->sndvar->snd_una = ack_seq;
 	ParseTCPOptions(cur_stream, cur_ts, (uint8_t *)tcph + TCP_HEADER_LEN, (tcph->doff << 2) - TCP_HEADER_LEN);

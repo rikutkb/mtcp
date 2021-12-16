@@ -217,7 +217,6 @@ http_get_url(char * data, int data_len, char* value, int value_len)
 	ret += sizeof(HTTP_GET);
 	while (*ret && SPACE_OR_TAB(*ret)) 
 		ret++;
-
 	temp = ret;
 	while (*temp && *temp != ' ' && i < value_len - 1) {
 		value[i++] = *temp++;

@@ -795,9 +795,10 @@ RunMainLoop(struct mtcp_thread_context *ctx)
 		mtcp->cur_ts = ts;
 		#if defined(USE_DDOSPROT)
 		if(cur_ts.tv_sec > pre_check_time + 1){
-			if(packet_num > THROUGHPUT_TH){
-				mtcp->is_attacking = 1;
-			}else if(packet_num < 100){
+			float tx_bytes_gbps=GBPS(mtcp->nstat.tx_bytes[0]-mtcp->p_nstat.tx_bytes[0]);
+			if(tx_bytes_gbps >= 0.7){
+				mtcp->is_attacking = 0;
+			}else if(tx_bytes_gbps < 0.5){
 				mtcp->is_attacking = 0;
 			}
 			packet_num = 0;
@@ -807,12 +808,12 @@ RunMainLoop(struct mtcp_thread_context *ctx)
 		if(cur_ts.tv_sec > pre_statistic_time+STATIC_DURATION){
 			pre_statistic_time = cur_ts.tv_sec;
 			if(1){//packet_num>=THROUGHPUT_TH*STATIC_DURATION
-				mtcp->is_attacking  = 1;
-				get_statistics(mtcp->ip_stat_table);
-
+				mtcp->is_attacking  = 0;
 			}else{//not attacking
 				mtcp->is_attacking  = 0;
 			}
+			get_statistics(mtcp->ip_stat_table);
+
 		}
 		#endif
 		for (rx_inf = 0; rx_inf < CONFIG.eths_num; rx_inf++) {
