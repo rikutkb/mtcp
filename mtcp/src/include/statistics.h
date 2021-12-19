@@ -22,8 +22,8 @@
     #define POW2(x) (x*x)
     #define MIN(a, b) ((a)<(b)?(a):(b))
     #define IS_IP_TABLE(x)	(x == IPHash)
-    #define ATTACKER_TH_1 20
-    #define ATTACKER_TH_2 30 
+    #define ATTACKER_TH_1 10000
+    #define ATTACKER_TH_2 5000
     typedef struct statistic{
         uint32_t packet_recv_num;
         uint32_t throughput_send_num;
@@ -69,7 +69,7 @@
     //unsigned int HashIPListener(const void *hbo_port_ptr);
     ip_statistic* CreateIPStat(mtcp_manager_t mtcp, uint32_t ip);
 
-    int JudgeDropbyIp(struct ip_hashtable *ht, uint32_t saddr);
+    int JudgeDropbyIp(struct ip_hashtable *ht, uint32_t saddr,int is_attacking);
     int EqualIP(const void *ip1, const void *ip2);
     unsigned int IPHash(const void *saddr);
     void AddedPacketStatistics(mtcp_manager_t mtcp, struct ip_hashtable *ht,uint32_t saddr,int ip_len);

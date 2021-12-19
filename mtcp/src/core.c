@@ -318,6 +318,15 @@ PrintNetworkStats(mtcp_manager_t mtcp, uint32_t cur_ts)
 					gflow_cnt, g_nstat.rx_packets[i], g_nstat.rx_errors[i], 
 					GBPS(g_nstat.rx_bytes[i]), g_nstat.tx_packets[i], 
 					GBPS(g_nstat.tx_bytes[i]));
+			if(GBPS(g_nstat.tx_bytes[i])>0.7){//todo idousuru
+				mtcp->is_attacking = 1;
+				mtcp->detected_t=cur_ts;
+				printf("atttack detected%f",GBPS(g_nstat.tx_bytes[i]));
+			}else if(GBPS(g_nstat.tx_bytes[i]) < 0.5){
+				mtcp->is_attacking = 0;
+				printf("not attack");
+			}
+			
 		}
 	}
 #ifdef ENABLELRO
@@ -795,23 +804,20 @@ RunMainLoop(struct mtcp_thread_context *ctx)
 		mtcp->cur_ts = ts;
 		#if defined(USE_DDOSPROT)
 		if(cur_ts.tv_sec > pre_check_time + 1){
-			float tx_bytes_gbps=GBPS(mtcp->nstat.tx_bytes[0]-mtcp->p_nstat.tx_bytes[0]);
-			if(tx_bytes_gbps >= 0.7){
-				mtcp->is_attacking = 0;
-			}else if(tx_bytes_gbps < 0.5){
-				mtcp->is_attacking = 0;
-			}
+
+
 			packet_num = 0;
 			reset_ip_pps(mtcp->ip_stat_table);
+			pre_check_time=cur_ts.tv_sec;
 
 		}
 		if(cur_ts.tv_sec > pre_statistic_time+STATIC_DURATION){
 			pre_statistic_time = cur_ts.tv_sec;
-			if(1){//packet_num>=THROUGHPUT_TH*STATIC_DURATION
-				mtcp->is_attacking  = 0;
-			}else{//not attacking
-				mtcp->is_attacking  = 0;
-			}
+			// if(1){//packet_num>=THROUGHPUT_TH*STATIC_DURATION
+			// 	mtcp->is_attacking  = 0;
+			// }else{//not attacking
+			// 	mtcp->is_attacking  = 0;
+			// }
 			get_statistics(mtcp->ip_stat_table);
 
 		}
@@ -830,9 +836,9 @@ RunMainLoop(struct mtcp_thread_context *ctx)
 					packet_num++;
 
 					struct iphdr* iph = (struct iphdr *)(pktbuf + sizeof(struct ethhdr));
-					is_drop = JudgeDropbyIp(mtcp->ip_stat_table,iph->saddr);
-					if(is_drop<1&&mtcp->is_attacking){
-						TRACE_INFO("%d:%d:is drop",iph->saddr,is_drop);
+					is_drop = JudgeDropbyIp(mtcp->ip_stat_table,iph->saddr,mtcp->is_attacking);
+					if(is_drop<1){
+						TRACE_DBG("%d:%d:is drop",iph->saddr,is_drop);
 						continue;
 					}
 					#endif

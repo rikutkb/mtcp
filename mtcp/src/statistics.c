@@ -81,27 +81,33 @@ void *IPHTSearch(struct ip_hashtable *ht, const void *it){
 }
 
 
-int JudgeDropbyIp(struct ip_hashtable *ht,uint32_t saddr){//if drop return 0
+int JudgeDropbyIp(struct ip_hashtable *ht,uint32_t saddr,int is_attacking){//if drop return 0
 	//if is attacking
 	struct ip_statistic *cur_ip_stat = NULL;
 	struct ip_statistic ip_stat;
 	ip_stat.ip = saddr;
 	if (!(cur_ip_stat = IPHTSearch(ht, &ip_stat))) {// not in hashtable
-		return 0;
+		return 1;
 	}
-	switch(cur_ip_stat->priority){
-		case 4://1%
-			return rand()%100+1<=99?1:-4;
-		case 3://10%
-			return rand()%10+1<=9?1:-3;
-		case 2://30%
-			return rand()%10+1<=8?1:-2;
-		case 1://50%
-			return rand()%10+1<=5?1:-1;
-		case 0://90%
-			return rand()%10+1<=1?1:0;
+	cur_ip_stat->pps++;
+	if(1){
+		if(cur_ip_stat->pps>1000){
+			printf("fast droping%d",saddr);
+			return -10;
+		}
+		switch(cur_ip_stat->priority){
+			case 4://1%
+				return rand()%100+1<=99?1:-4;
+			case 3://10%
+				return rand()%10+1<=9?1:-3;
+			case 2://20%
+				return rand()%10+1<=7?1:-2;
+			case 1://60%
+				return rand()%10+1<=4?1:-1;
+			case 0://100%
+				return 0;
+		}
 	}
-	
 }
 int EqualIP(const void *ip1, const void *ip2){
 	struct ip_statistic *ip_1 = (const ip_statistic *)ip1;
@@ -164,8 +170,8 @@ void AddedPacketStatistics(mtcp_manager_t mtcp, struct ip_hashtable *ht,uint32_t
 		cur_ip_stat = CreateIPStat(mtcp,saddr);
 	}
 	cur_ip_stat->packet_recv_num++;
-	cur_ip_stat->pps++;
 	if(cur_ip_stat->pps>ATTACKER_TH_1){
+		printf("whyyyyyyyyyyyyyyyyyyyyyyyyyy");
 		if(cur_ip_stat->pps>ATTACKER_TH_2){
 			cur_ip_stat->priority=0;
 			TRACE_INFO("fast drop");
