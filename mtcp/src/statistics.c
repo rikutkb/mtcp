@@ -90,18 +90,19 @@ int JudgeDropbyIp(struct ip_hashtable *ht,uint32_t saddr,int is_attacking){//if 
 		return 1;
 	}
 	cur_ip_stat->pps++;
-	if(1){
-		if(cur_ip_stat->pps>1000){
+	if(is_attacking){
+		if(cur_ip_stat->pps>10000){
 			printf("fast droping%d",saddr);
+			cur_ip_stat->priority=0;
 			return -10;
 		}
 		switch(cur_ip_stat->priority){
-			case 4://1%
-				return rand()%100+1<=99?1:-4;
-			case 3://10%
-				return rand()%10+1<=9?1:-3;
-			case 2://20%
-				return rand()%10+1<=7?1:-2;
+			case 4://0%
+				return 1;
+			case 3://20%
+				return rand()%10+1<=8?1:-3;
+			case 2://40%
+				return rand()%10+1<=6?1:-2;
 			case 1://60%
 				return rand()%10+1<=4?1:-1;
 			case 0://100%
@@ -145,7 +146,7 @@ ip_statistic* CreateIPStat(mtcp_manager_t mtcp, uint32_t ip){
 	}
 	memset(ip_stat, 0, sizeof(ip_statistic));
 	ip_stat->ip = ip;
-	ip_stat->priority = 2;
+	ip_stat->priority = 3;
 	ip_stat->packet_recv_num = 0;
 	ip_stat->throughput_send_num=0;
 	ip_stat->packet_rtt=0;
@@ -184,6 +185,7 @@ void AddedPacketStatistics(mtcp_manager_t mtcp, struct ip_hashtable *ht,uint32_t
 int get_average(struct ip_hashtable *ht, statistic *stat_ave){
 	uint8_t valid_ips=0;
 	ip_statistic *walk;
+	stat_ave->packet_recv_num=0;
 	for (int i = 0; i < ht->bins; i++){
 		TAILQ_FOREACH(walk, &ht->ht_table[i], links) {
 			if(walk->packet_recv_num>=0){
@@ -211,6 +213,7 @@ int get_dispresion(struct ip_hashtable *ht, statistic stat_ave, statistic *stat_
 	statistic stat_sum;
 	int valid_ips = 0;
 	ip_statistic *walk;
+	stat_dis->packet_recv_num=0;
 
 	for (int i = 0; i < ht->bins; i++){
 		TAILQ_FOREACH(walk, &ht->ht_table[i], links) {
@@ -235,13 +238,10 @@ int get_dispresion(struct ip_hashtable *ht, statistic stat_ave, statistic *stat_
 
 }
 
-void get_statistics(struct ip_hashtable *ht){
-    statistic stat_ave;
-    if(get_average(ht,&stat_ave)){
-		statistic stat_dis;
-		if(get_dispresion(ht,stat_ave,&stat_dis)){
+void get_statistics(struct ip_hashtable *ht,statistic *stat_ave, statistic *stat_dis){
+    if(get_average(ht,stat_ave)){
+		if(get_dispresion(ht,*stat_ave,stat_dis)){
 			TRACE_INFO("average is %d, dispression is %d",stat_ave.packet_recv_num,stat_dis.packet_recv_num);
-			update_priority(ht,stat_ave,stat_dis);
 			return;
 		}else{
 			TRACE_INFO("failed to get stat");
@@ -251,6 +251,17 @@ void get_statistics(struct ip_hashtable *ht){
 
 	}
 
+}
+void get_moving_statistics(uint32_t stat_cal_times,statistic ave_arr[], statistic dis_arr[],statistic *ave_cur,statistic *dis_cur){
+	int times = MIN(stat_cal_times,MOVING_AVE_TIMES);
+	ave_cur->packet_recv_num=0;
+	dis_cur->packet_recv_num=0;
+	for(int i=0;i<times;i++){
+		ave_cur->packet_recv_num+=ave_arr[i].packet_recv_num;
+		dis_cur->packet_recv_num+=dis_arr[i].packet_recv_num;
+	}
+	ave_cur->packet_recv_num/=MOVING_AVE_TIMES;
+	dis_cur->packet_recv_num/=MOVING_AVE_TIMES;
 }
 
 void reset_ip_pps(struct ip_hashtable *ht){
@@ -271,7 +282,7 @@ void update_priority(struct ip_hashtable *ht, statistic stat_ave, statistic stat
 				if(walk->priority>0){
 					walk->priority--;
 				}
-			}else{
+			}else if(walk->packet_recv_num<=stat_ave.packet_recv_num){
 				if(walk->priority<MAX_PRIORITY){
 					walk->priority++;
 				}

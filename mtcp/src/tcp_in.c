@@ -504,10 +504,10 @@ ProcessACK(mtcp_manager_t mtcp, tcp_stream *cur_stream, uint32_t cur_ts,
 		cur_stream->wait_for_acks = FALSE;
 #endif
 		cur_stream->snd_nxt = ack_seq;
-		TRACE_DBG("Sending again..., ack_seq=%u sndlen=%u cwnd=%u\n",
-                        ack_seq-sndvar->iss,
-                        sndvar->sndbuf->len,
-                        sndvar->cwnd / sndvar->mss);
+		// TRACE_DBG("Sending again..., ack_seq=%u sndlen=%u cwnd=%u\n",
+        //                 ack_seq-sndvar->iss,
+        //                 sndvar->sndbuf->len,
+        //                 sndvar->cwnd / sndvar->mss);
 		if (sndvar->sndbuf->len == 0) {
 			RemoveFromSendList(mtcp, cur_stream);
 		} else {

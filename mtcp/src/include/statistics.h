@@ -16,7 +16,7 @@
     #include "memory_mgt.h"
     #define MAX_PRIORITY 2
     #define THROUGHPUT_TH 1000
-    #define STATIC_DURATION 60
+    #define STATIC_DURATION 30
     #define ATTAKING_CHECK_DURATION 10
     #define NUM_BINS_IPS 5003
     #define POW2(x) (x*x)
@@ -24,6 +24,7 @@
     #define IS_IP_TABLE(x)	(x == IPHash)
     #define ATTACKER_TH_1 10000
     #define ATTACKER_TH_2 5000
+    #define MOVING_AVE_TIMES 5
     typedef struct statistic{
         uint32_t packet_recv_num;
         uint32_t throughput_send_num;
@@ -75,7 +76,8 @@
     void AddedPacketStatistics(mtcp_manager_t mtcp, struct ip_hashtable *ht,uint32_t saddr,int ip_len);
     int get_average(struct ip_hashtable *ht, statistic *stat_ave);
     int get_dispresion(struct ip_hashtable *ht,  statistic stat_ave, statistic *stat_dis);
-    void get_statistics(struct ip_hashtable *ht);
+    void get_moving_statistics(uint32_t stat_cal_times,statistic ave_arr[], statistic dis_arr[],statistic *ave_cur,statistic *dis_cur);
+    void get_statistics(struct ip_hashtable *ht,statistic *stat_ave, statistic *stat_dis);
     void update_priority(struct ip_hashtable *ht, statistic stat_ave, statistic stat_dis);
     void ProcessRstTCPPacket(mtcp_manager_t mtcp, const struct iphdr *iph, uint32_t cur_ts,
     const struct tcphdr *tcph, uint32_t seq, int payloadlen );

@@ -312,19 +312,23 @@ PrintNetworkStats(mtcp_manager_t mtcp, uint32_t cur_ts)
 #if NETSTAT_TOTAL
 	for (i = 0; i < CONFIG.eths_num; i++) {
 		if (CONFIG.eths[i].stat_print) {
+			TRACE_DBG("[ ALL ] %s flows: %6u, "
+					"RX: %7ld(pps) (err: %5ld), %5.2lf(Gbps), "
+					"TX: %7ld(pps), %5.2lf(Gbps)\n", CONFIG.eths[i].dev_name, 
+					gflow_cnt, g_nstat.rx_packets[i], g_nstat.rx_errors[i], 
+					GBPS(g_nstat.rx_bytes[i]), g_nstat.tx_packets[i], 
+					GBPS(g_nstat.tx_bytes[i]));
 			fprintf(stderr, "[ ALL ] %s flows: %6u, "
 					"RX: %7ld(pps) (err: %5ld), %5.2lf(Gbps), "
 					"TX: %7ld(pps), %5.2lf(Gbps)\n", CONFIG.eths[i].dev_name, 
 					gflow_cnt, g_nstat.rx_packets[i], g_nstat.rx_errors[i], 
 					GBPS(g_nstat.rx_bytes[i]), g_nstat.tx_packets[i], 
 					GBPS(g_nstat.tx_bytes[i]));
-			if(GBPS(g_nstat.tx_bytes[i])>0.7){//todo idousuru
+			if(GBPS(g_nstat.tx_bytes[i])>=0.8){//todo idousuru
 				mtcp->is_attacking = 1;
 				mtcp->detected_t=cur_ts;
-				printf("atttack detected%f",GBPS(g_nstat.tx_bytes[i]));
-			}else if(GBPS(g_nstat.tx_bytes[i]) < 0.5){
+			}else if(GBPS(g_nstat.tx_bytes[i]) < 0.5&&cur_ts>mtcp->detected_t+30000){
 				mtcp->is_attacking = 0;
-				printf("not attack");
 			}
 			
 		}
@@ -787,6 +791,12 @@ RunMainLoop(struct mtcp_thread_context *ctx)
 	uint32_t packet_num = 0;
 	uint32_t attack_threthold = STATIC_DURATION * 5000;
 	int is_drop;
+	statistic stat_ave;
+	statistic stat_dis;
+	statistic stat_m_ave[MOVING_AVE_TIMES];
+	statistic stat_m_dis[MOVING_AVE_TIMES];
+	uint32_t stat_cal_times=0;
+
 	#endif
 	gettimeofday(&cur_ts, NULL);
 
@@ -813,12 +823,12 @@ RunMainLoop(struct mtcp_thread_context *ctx)
 		}
 		if(cur_ts.tv_sec > pre_statistic_time+STATIC_DURATION){
 			pre_statistic_time = cur_ts.tv_sec;
-			// if(1){//packet_num>=THROUGHPUT_TH*STATIC_DURATION
-			// 	mtcp->is_attacking  = 0;
-			// }else{//not attacking
-			// 	mtcp->is_attacking  = 0;
-			// }
-			get_statistics(mtcp->ip_stat_table);
+			if(!mtcp->is_attacking){
+				stat_cal_times++;
+				get_statistics(mtcp->ip_stat_table,&stat_m_ave[stat_cal_times%MOVING_AVE_TIMES],&stat_m_dis[stat_cal_times%MOVING_AVE_TIMES]);
+				get_moving_statistics(stat_cal_times,stat_m_ave,stat_m_dis,&stat_ave,&stat_dis);
+			}
+			update_priority(mtcp->ip_stat_table,stat_ave,stat_dis);
 
 		}
 		#endif
@@ -838,6 +848,7 @@ RunMainLoop(struct mtcp_thread_context *ctx)
 					struct iphdr* iph = (struct iphdr *)(pktbuf + sizeof(struct ethhdr));
 					is_drop = JudgeDropbyIp(mtcp->ip_stat_table,iph->saddr,mtcp->is_attacking);
 					if(is_drop<1){
+						
 						TRACE_DBG("%d:%d:is drop",iph->saddr,is_drop);
 						continue;
 					}
