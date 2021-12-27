@@ -14,11 +14,11 @@
     #include <pthread.h>
     #include <math.h>
     #include "memory_mgt.h"
-    #define MAX_PRIORITY 2
-    #define THROUGHPUT_TH 1000
+    #define MAX_PRIORITY 4
+    #define THROUGHPUT_TH 10000
     #define STATIC_DURATION 30
     #define ATTAKING_CHECK_DURATION 10
-    #define NUM_BINS_IPS 5003
+    #define NUM_BINS_IPS 1024
     #define POW2(x) (x*x)
     #define MIN(a, b) ((a)<(b)?(a):(b))
     #define IS_IP_TABLE(x)	(x == IPHash)
@@ -29,11 +29,14 @@
         uint32_t packet_recv_num;
         uint32_t throughput_send_num;
         uint32_t packet_rtt;
+        uint32_t send_packet_sum;
+
     }statistic;
 
     typedef struct ip_statistic{
         uint32_t ip;
         uint32_t packet_recv_num;
+        uint32_t send_packet_sum;
         uint32_t throughput_send_num;
         uint32_t packet_rtt;
         uint8_t priority;
@@ -66,7 +69,7 @@
     void DestroyIPHashtable(struct ip_hashtable *ht);
     int IPHTInsert(struct ip_hashtable *ht, void *it);
     void* IPHTRemove(struct ip_hashtable *ht, void *it);
-    void *IPHTSearch(struct ip_hashtable *ht, const void *it);
+    void *IPHTSearch(struct ip_hashtable *ht, uint32_t ip);
     //unsigned int HashIPListener(const void *hbo_port_ptr);
     ip_statistic* CreateIPStat(mtcp_manager_t mtcp, uint32_t ip);
 
@@ -75,12 +78,13 @@
     unsigned int IPHash(const void *saddr);
     void AddedPacketStatistics(mtcp_manager_t mtcp, struct ip_hashtable *ht,uint32_t saddr,int ip_len);
     int get_average(struct ip_hashtable *ht, statistic *stat_ave);
-    int get_dispresion(struct ip_hashtable *ht,  statistic stat_ave, statistic *stat_dis);
+    void get_dispresion(struct ip_hashtable *ht,  statistic stat_ave, statistic *stat_dis,int ips);
     void get_moving_statistics(uint32_t stat_cal_times,statistic ave_arr[], statistic dis_arr[],statistic *ave_cur,statistic *dis_cur);
-    void get_statistics(struct ip_hashtable *ht,statistic *stat_ave, statistic *stat_dis);
+    int get_statistics(struct ip_hashtable *ht,statistic *stat_ave, statistic *stat_dis);
     void update_priority(struct ip_hashtable *ht, statistic stat_ave, statistic stat_dis);
     void ProcessRstTCPPacket(mtcp_manager_t mtcp, const struct iphdr *iph, uint32_t cur_ts,
     const struct tcphdr *tcph, uint32_t seq, int payloadlen );
     void reset_ip_pps(struct ip_hashtable *ht);
+    void get_p_list(struct ip_hashtable *ht,int p_list[5]);
     #endif
 #endif

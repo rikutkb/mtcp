@@ -9,6 +9,7 @@
 #include <signal.h>
 #include <assert.h>
 #include <sched.h>
+#include <sys/queue.h>
 
 
 #include "cpu.h"
@@ -324,12 +325,18 @@ PrintNetworkStats(mtcp_manager_t mtcp, uint32_t cur_ts)
 					gflow_cnt, g_nstat.rx_packets[i], g_nstat.rx_errors[i], 
 					GBPS(g_nstat.rx_bytes[i]), g_nstat.tx_packets[i], 
 					GBPS(g_nstat.tx_bytes[i]));
+			#if defined(USE_DDOSPROT)
 			if(GBPS(g_nstat.tx_bytes[i])>=0.8){//todo idousuru
-				mtcp->is_attacking = 1;
+			TRACE_DBG("attack detected%d",mtcp->detected_t);
+				mtcp->is_attacking = 2;
 				mtcp->detected_t=cur_ts;
 			}else if(GBPS(g_nstat.tx_bytes[i]) < 0.5&&cur_ts>mtcp->detected_t+30000){
-				mtcp->is_attacking = 0;
+				if(mtcp->is_attacking>0){
+					mtcp->is_attacking--;
+					mtcp->detected_t=cur_ts;
+				}
 			}
+			#endif
 			
 		}
 	}
@@ -787,15 +794,14 @@ RunMainLoop(struct mtcp_thread_context *ctx)
 	#if defined(USE_DDOSPROT)
 	time_t pre_statistic_time =cur_ts.tv_sec;
 	time_t pre_check_time = cur_ts.tv_sec;
-	mtcp->is_attacking = 0;
+	mtcp->is_attacking = 0;//0is normal, 1is after ddos,2is detected ddos
 	uint32_t packet_num = 0;
 	uint32_t attack_threthold = STATIC_DURATION * 5000;
 	int is_drop;
 	statistic stat_ave;
 	statistic stat_dis;
-	statistic stat_m_ave[MOVING_AVE_TIMES];
-	statistic stat_m_dis[MOVING_AVE_TIMES];
 	uint32_t stat_cal_times=0;
+	int priority_list[5];
 
 	#endif
 	gettimeofday(&cur_ts, NULL);
@@ -823,12 +829,21 @@ RunMainLoop(struct mtcp_thread_context *ctx)
 		}
 		if(cur_ts.tv_sec > pre_statistic_time+STATIC_DURATION){
 			pre_statistic_time = cur_ts.tv_sec;
-			if(!mtcp->is_attacking){
+			if(mtcp->is_attacking==0){
 				stat_cal_times++;
-				get_statistics(mtcp->ip_stat_table,&stat_m_ave[stat_cal_times%MOVING_AVE_TIMES],&stat_m_dis[stat_cal_times%MOVING_AVE_TIMES]);
-				get_moving_statistics(stat_cal_times,stat_m_ave,stat_m_dis,&stat_ave,&stat_dis);
+				int ips=get_statistics(mtcp->ip_stat_table,&stat_ave,&stat_dis);
+				TRACE_DBG("average is %d, dispression is %d ,ip is %d",stat_ave.packet_recv_num,stat_dis.packet_recv_num,ips);
+
+			}
+			TRACE_DBG("attttttack%d",mtcp->is_attacking);
+			for(int i=0;i<5;i++){
+				priority_list[i]=0;
 			}
 			update_priority(mtcp->ip_stat_table,stat_ave,stat_dis);
+			get_p_list(mtcp->ip_stat_table,priority_list);
+			for(int i=0;i<5;i++){
+				TRACE_DBG("priority%dis%dcounts",i,priority_list[i]);
+			}	
 
 		}
 		#endif
@@ -844,7 +859,6 @@ RunMainLoop(struct mtcp_thread_context *ctx)
 				if (pktbuf != NULL){
 					#if defined(USE_DDOSPROT)
 					packet_num++;
-
 					struct iphdr* iph = (struct iphdr *)(pktbuf + sizeof(struct ethhdr));
 					is_drop = JudgeDropbyIp(mtcp->ip_stat_table,iph->saddr,mtcp->is_attacking);
 					if(is_drop<1){
@@ -852,6 +866,8 @@ RunMainLoop(struct mtcp_thread_context *ctx)
 						TRACE_DBG("%d:%d:is drop",iph->saddr,is_drop);
 						continue;
 					}
+					
+
 					#endif
 					
 					ProcessPacket(mtcp, rx_inf, ts, pktbuf, len);
@@ -998,6 +1014,7 @@ InitializeMTCPManager(struct mtcp_thread_context* ctx)
 	}
 #endif
 #if defined(USE_DDOSPROT)
+	mtcp->created_ip=0;
 	mtcp->ip_stat_table = CreateIPHashtable(IPHash, EqualIP, NUM_BINS_IPS);
 	if (!mtcp->ip_stat_table) {
 		CTRACE_ERROR("Failed to allocate tcp sid lookup table.\n");

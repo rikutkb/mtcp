@@ -236,6 +236,7 @@ struct mtcp_manager
 	int is_attacking;
 	uint32_t detected_t;
 	mem_pool_t ip_pool;	
+	uint32_t created_ip;
 #endif
 
 	uint32_t s_index:24;		/* stream index */

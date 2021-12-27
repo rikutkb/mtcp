@@ -1,8 +1,12 @@
 #include "statistics.h"
+#include "mtcp_api.h"
+
 #include "debug.h"
 #include "fhash.h"
 #include "tcp_stream.h"
 #include "tcp_in.h"
+#include "logger.h"
+
 #if defined(USE_DDOSPROT)
 
 struct ip_hashtable *CreateIPHashtable(unsigned int (*hashfn) (const void *), int (*eqfn) (const void *, const void *),int bins){
@@ -45,8 +49,8 @@ int IPHTInsert(struct ip_hashtable *ht, void *it){
 	ip_statistic *item = (ip_statistic *)it;
 
 	assert(ht);
-
-	idx = ht->hashfn(item);
+	
+	idx = ht->hashfn(item->ip);
 	assert(idx >=0 && idx < NUM_BINS_FLOWS);
 
 	TAILQ_INSERT_TAIL(&ht->ht_table[idx], item, links);
@@ -57,22 +61,24 @@ void* IPHTRemove(struct ip_hashtable *ht, void *it){
 
 	hash_ip_head *head;
 	ip_statistic *item = (ip_statistic *)it;
-	int idx = ht->hashfn(item);
+	int idx = ht->hashfn(item->ip);
 
 	head = &ht->ht_table[idx];
 	TAILQ_REMOVE(head, item, links);	
 
 	return (item);
 }
-void *IPHTSearch(struct ip_hashtable *ht, const void *it){
+void *IPHTSearch(struct ip_hashtable *ht, uint32_t ip){
 	int idx;
-	const ip_statistic *item = (const ip_statistic *)it;
+	ip_statistic it;
+	it.ip=ip;
+	const ip_statistic *item = &it;
 	ip_statistic *walk;
 	hash_ip_head *head;
-	idx = ht->hashfn(item);
-	head = &ht->ht_table[ht->hashfn(item)];
+	idx = ht->hashfn(item->ip);
+	head = &ht->ht_table[idx];
 	TAILQ_FOREACH(walk, head, links) {
-		if (ht->eqfn(walk, item)){
+		if (walk->ip==ip){
 			return walk;
 		}
 	}
@@ -86,28 +92,48 @@ int JudgeDropbyIp(struct ip_hashtable *ht,uint32_t saddr,int is_attacking){//if 
 	struct ip_statistic *cur_ip_stat = NULL;
 	struct ip_statistic ip_stat;
 	ip_stat.ip = saddr;
-	if (!(cur_ip_stat = IPHTSearch(ht, &ip_stat))) {// not in hashtable
+	return 1;
+	if (!(cur_ip_stat = IPHTSearch(ht, saddr))) {// not in hashtable
 		return 1;
 	}
 	cur_ip_stat->pps++;
+	cur_ip_stat->send_packet_sum++;
+
 	if(is_attacking){
-		if(cur_ip_stat->pps>10000){
-			printf("fast droping%d",saddr);
+		if(cur_ip_stat->pps>500){
 			cur_ip_stat->priority=0;
 			return -10;
 		}
-		switch(cur_ip_stat->priority){
-			case 4://0%
-				return 1;
-			case 3://20%
-				return rand()%10+1<=8?1:-3;
-			case 2://40%
-				return rand()%10+1<=6?1:-2;
-			case 1://60%
-				return rand()%10+1<=4?1:-1;
-			case 0://100%
-				return 0;
+		if(is_attacking==1){
+			switch(cur_ip_stat->priority){
+				case 4://0%
+					return 1;
+				case 3://20%
+					return rand()%10+1<=10?1:-3;
+				case 2://40%
+					return rand()%10+1<=9?1:-2;
+				case 1://60%
+					return rand()%10+1<=5?1:-1;
+				case 0://100%
+					return 0;
+			}
+		}else{
+			switch(cur_ip_stat->priority){
+				case 4://0%
+					return rand()%10+1<=9?1:-1*cur_ip_stat->send_packet_sum;
+				case 3://20%
+					return rand()%10+1<=7?1:-1*cur_ip_stat->send_packet_sum;
+				case 2://40%
+					return rand()%10+1<=4?1:-1*cur_ip_stat->send_packet_sum;
+				case 1://60%
+					return rand()%10+1<=2?1:-1;
+				case 0://100%
+					return 0;
+			}
 		}
+
+	}else{
+		return 1;
 	}
 }
 int EqualIP(const void *ip1, const void *ip2){
@@ -130,24 +156,27 @@ unsigned int IPHash(const void *saddr){
 	hash ^= (hash >> 11);
 	hash += (hash << 15);
 
-	return hash & (3 - 1);
+	return hash & (NUM_BINS_IPS - 1);
 
 }
 ip_statistic* CreateIPStat(mtcp_manager_t mtcp, uint32_t ip){
 	ip_statistic *ip_stat = NULL;
 	pthread_mutex_lock(&mtcp->ctx->ip_pool_lock);
 	ip_stat = (ip_statistic *)MPAllocateChunk(mtcp->ip_pool);
+
 	if(!ip_stat){
 		TRACE_ERROR("Cannot allocate memory for the ip_stat. "
-				"CONFIG.max_concurrency: %d, concurrent: %u\n", 
-				CONFIG.max_concurrency, mtcp->flow_cnt);
+				"CONFIG.max_concurrency: %d, created: %u\n", 
+				CONFIG.max_concurrency, mtcp->created_ip);
 		pthread_mutex_unlock(&mtcp->ctx->ip_pool_lock);
 		return NULL;
 	}
+	mtcp->created_ip++;
 	memset(ip_stat, 0, sizeof(ip_statistic));
 	ip_stat->ip = ip;
 	ip_stat->priority = 3;
 	ip_stat->packet_recv_num = 0;
+	ip_stat->send_packet_sum = 0;
 	ip_stat->throughput_send_num=0;
 	ip_stat->packet_rtt=0;
 	int ret = IPHTInsert(mtcp->ip_stat_table, ip_stat);
@@ -166,11 +195,13 @@ void AddedPacketStatistics(mtcp_manager_t mtcp, struct ip_hashtable *ht,uint32_t
 	ip_statistic *cur_ip_stat = NULL;
 	ip_statistic ip_stat;
 	ip_stat.ip = saddr;
-	if (!(cur_ip_stat = IPHTSearch(ht, &ip_stat))) {
+	if (!(cur_ip_stat = IPHTSearch(ht, saddr))) {
 		TRACE_INFO("create ip stat");
 		cur_ip_stat = CreateIPStat(mtcp,saddr);
+		return;
 	}
 	cur_ip_stat->packet_recv_num++;
+
 	if(cur_ip_stat->pps>ATTACKER_TH_1){
 		printf("whyyyyyyyyyyyyyyyyyyyyyyyyyy");
 		if(cur_ip_stat->pps>ATTACKER_TH_2){
@@ -181,16 +212,24 @@ void AddedPacketStatistics(mtcp_manager_t mtcp, struct ip_hashtable *ht,uint32_t
 		cur_ip_stat->priority=1;
 	}
 }
+void get_p_list(struct ip_hashtable *ht,int p_list[5]){
+	ip_statistic *walk;
 
+	for (int i = 0; i < ht->bins; i++){
+		TAILQ_FOREACH(walk, &ht->ht_table[i], links) {
+			p_list[walk->priority]++;
+		}
+	}
+
+}
 int get_average(struct ip_hashtable *ht, statistic *stat_ave){
 	uint8_t valid_ips=0;
 	ip_statistic *walk;
 	stat_ave->packet_recv_num=0;
 	for (int i = 0; i < ht->bins; i++){
 		TAILQ_FOREACH(walk, &ht->ht_table[i], links) {
-			if(walk->packet_recv_num>=0){
-				TRACE_INFO("packet recv iiiiii%d",stat_ave->packet_recv_num);
-				valid_ips++;
+			valid_ips++;
+			if(walk->send_packet_sum>=0){
 				stat_ave->packet_recv_num+=walk->packet_recv_num;
 
 			}
@@ -207,49 +246,38 @@ int get_average(struct ip_hashtable *ht, statistic *stat_ave){
 		return 0;
 	}
     //全てのホワイトリストのパケット数、スループットを計算
-	return 1;
+	return valid_ips;
 }
-int get_dispresion(struct ip_hashtable *ht, statistic stat_ave, statistic *stat_dis){
+void get_dispresion(struct ip_hashtable *ht, statistic stat_ave, statistic *stat_dis, int ips){
 	statistic stat_sum;
 	int valid_ips = 0;
 	ip_statistic *walk;
 	stat_dis->packet_recv_num=0;
-
+	stat_sum.packet_recv_num=0;
+	
 	for (int i = 0; i < ht->bins; i++){
 		TAILQ_FOREACH(walk, &ht->ht_table[i], links) {
 			if(walk->packet_recv_num>0){
-				valid_ips++;
-				stat_sum.packet_recv_num+=POW2(walk->packet_recv_num - stat_ave.packet_recv_num);
+				int diff=(int)walk->packet_recv_num- (int)stat_ave.packet_recv_num;
+
+				stat_sum.packet_recv_num+=(POW2(diff)/ips);
 			}
 		}
 	}
-	if(valid_ips>1){
-		stat_sum.packet_recv_num/=(valid_ips-1);
-		stat_dis->packet_recv_num = (uint8_t)sqrt(stat_sum.packet_recv_num);
-	}else if(valid_ips==1){
-		return 1;
-	}else{
-		return 0;
-	}
+	stat_dis->packet_recv_num=(uint32_t)sqrt(stat_sum.packet_recv_num);
 
-	return 1;
 
     //ホワイトリストのスループットをリセット
 
 }
 
-void get_statistics(struct ip_hashtable *ht,statistic *stat_ave, statistic *stat_dis){
-    if(get_average(ht,stat_ave)){
-		if(get_dispresion(ht,*stat_ave,stat_dis)){
-			TRACE_INFO("average is %d, dispression is %d",stat_ave.packet_recv_num,stat_dis.packet_recv_num);
-			return;
-		}else{
-			TRACE_INFO("failed to get stat");
-		}
-	}else{
-		TRACE_INFO("failed to get stat");
+int get_statistics(struct ip_hashtable *ht,statistic *stat_ave, statistic *stat_dis){
+	int valid_ips=get_average(ht,stat_ave);
+    if(valid_ips>2){
+		get_dispresion(ht,*stat_ave,stat_dis,valid_ips);
 
 	}
+	return valid_ips;
 
 }
 void get_moving_statistics(uint32_t stat_cal_times,statistic ave_arr[], statistic dis_arr[],statistic *ave_cur,statistic *dis_cur){
@@ -278,16 +306,17 @@ void update_priority(struct ip_hashtable *ht, statistic stat_ave, statistic stat
 	TRACE_INFO("average is %d, dispression is %d",stat_ave.packet_recv_num,stat_dis.packet_recv_num);
 	for (int i = 0; i < ht->bins; i++){
 		TAILQ_FOREACH(walk, &ht->ht_table[i], links) {
-			if(walk->packet_recv_num > MIN(THROUGHPUT_TH,stat_ave.packet_recv_num+stat_dis.packet_recv_num*2)){
+			if(walk->send_packet_sum > MIN(THROUGHPUT_TH,stat_ave.packet_recv_num+stat_dis.packet_recv_num)){
 				if(walk->priority>0){
 					walk->priority--;
 				}
-			}else if(walk->packet_recv_num<=stat_ave.packet_recv_num){
+			}else if(walk->send_packet_sum<stat_ave.packet_recv_num){
 				if(walk->priority<MAX_PRIORITY){
 					walk->priority++;
 				}
 			}
 			walk->packet_recv_num = 0;
+			walk->send_packet_sum = 0;
 
 
 		}
