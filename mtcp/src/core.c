@@ -144,6 +144,8 @@ HandleSignal(int signal)
 		}
 	}
 }
+
+
 /*----------------------------------------------------------------------------*/
 static int 
 AttachDevice(struct mtcp_thread_context* ctx)
@@ -265,6 +267,8 @@ PrintEventStat(int core, struct mtcp_epoll_stat *stat)
 #endif /* EVENT_STAT */
 /*----------------------------------------------------------------------------*/
 #ifdef NETSTAT
+
+
 static inline void
 PrintNetworkStats(mtcp_manager_t mtcp, uint32_t cur_ts)
 {
@@ -311,6 +315,7 @@ PrintNetworkStats(mtcp_manager_t mtcp, uint32_t cur_ts)
 		}
 	}
 #if NETSTAT_TOTAL
+	TRACE_DBG("\n");
 	for (i = 0; i < CONFIG.eths_num; i++) {
 		if (CONFIG.eths[i].stat_print) {
 			TRACE_DBG("[ ALL ] %s flows: %6u, "
@@ -327,7 +332,7 @@ PrintNetworkStats(mtcp_manager_t mtcp, uint32_t cur_ts)
 					GBPS(g_nstat.tx_bytes[i]));
 			#if defined(USE_DDOSPROT)
 			if(GBPS(g_nstat.tx_bytes[i])>=0.8){//todo idousuru
-			TRACE_DBG("attack detected%d",mtcp->detected_t);
+			TRACE_DBG("attack detected%d\n",mtcp->detected_t);
 				mtcp->is_attacking = 2;
 				mtcp->detected_t=cur_ts;
 			}else if(GBPS(g_nstat.tx_bytes[i]) < 0.5&&cur_ts>mtcp->detected_t+30000){
@@ -384,6 +389,8 @@ PrintNetworkStats(mtcp_manager_t mtcp, uint32_t cur_ts)
 
 	fflush(stderr);
 }
+
+
 #endif /* NETSTAT */
 /*----------------------------------------------------------------------------*/
 #if BLOCKING_SUPPORT
@@ -780,6 +787,18 @@ InterruptApplication(mtcp_manager_t mtcp)
 		}
 	}
 }
+//for debug function
+
+static inline void
+print_stat(mtcp_manager_t mtcp,struct ip_hashtable *ht){
+	ip_statistic *walk;
+	for (int i = 0; i < ht->bins; i++){
+		TAILQ_FOREACH(walk, &ht->ht_table[i], links) {
+			TRACE_DBG("%d,%d,%d,statistics",walk->packet_recv_num,walk->send_packet_sum,walk->pps);
+		}
+	}
+	TRACE_DBG("\n");
+}
 /*----------------------------------------------------------------------------*/
 static void 
 RunMainLoop(struct mtcp_thread_context *ctx)
@@ -819,23 +838,18 @@ RunMainLoop(struct mtcp_thread_context *ctx)
 		ts = TIMEVAL_TO_TS(&cur_ts);
 		mtcp->cur_ts = ts;
 		#if defined(USE_DDOSPROT)
-		if(cur_ts.tv_sec > pre_check_time + 1){
 
-
-			packet_num = 0;
-			reset_ip_pps(mtcp->ip_stat_table);
-			pre_check_time=cur_ts.tv_sec;
-
-		}
 		if(cur_ts.tv_sec > pre_statistic_time+STATIC_DURATION){
+			//print_stat(mtcp,mtcp->ip_stat_table);
+
 			pre_statistic_time = cur_ts.tv_sec;
 			if(mtcp->is_attacking==0){
 				stat_cal_times++;
 				int ips=get_statistics(mtcp->ip_stat_table,&stat_ave,&stat_dis);
-				TRACE_DBG("average is %d, dispression is %d ,ip is %d",stat_ave.packet_recv_num,stat_dis.packet_recv_num,ips);
+				TRACE_DBG("average is %d, dispression is %d ,ip is %d\n",stat_ave.packet_recv_num,stat_dis.packet_recv_num,ips);
 
 			}
-			TRACE_DBG("attttttack%d",mtcp->is_attacking);
+			TRACE_DBG("mtcp status is %d\n",mtcp->is_attacking);
 			for(int i=0;i<5;i++){
 				priority_list[i]=0;
 			}
@@ -843,7 +857,16 @@ RunMainLoop(struct mtcp_thread_context *ctx)
 			get_p_list(mtcp->ip_stat_table,priority_list);
 			for(int i=0;i<5;i++){
 				TRACE_DBG("priority%dis%dcounts",i,priority_list[i]);
-			}	
+			}
+			TRACE_DBG("\n");
+
+		}
+		if(cur_ts.tv_sec > pre_check_time + 1){
+
+
+			packet_num = 0;
+			reset_ip_pps(mtcp->ip_stat_table);
+			pre_check_time=cur_ts.tv_sec;
 
 		}
 		#endif

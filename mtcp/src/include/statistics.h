@@ -15,7 +15,7 @@
     #include <math.h>
     #include "memory_mgt.h"
     #define MAX_PRIORITY 4
-    #define THROUGHPUT_TH 10000
+    #define THROUGHPUT_TH 30000
     #define STATIC_DURATION 30
     #define ATTAKING_CHECK_DURATION 10
     #define NUM_BINS_IPS 1024

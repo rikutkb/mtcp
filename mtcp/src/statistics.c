@@ -6,6 +6,9 @@
 #include "tcp_stream.h"
 #include "tcp_in.h"
 #include "logger.h"
+#include "mtcp_api.h"
+#include "eventpoll.h"
+#include "debug.h"
 
 #if defined(USE_DDOSPROT)
 
@@ -92,45 +95,30 @@ int JudgeDropbyIp(struct ip_hashtable *ht,uint32_t saddr,int is_attacking){//if 
 	struct ip_statistic *cur_ip_stat = NULL;
 	struct ip_statistic ip_stat;
 	ip_stat.ip = saddr;
-	return 1;
 	if (!(cur_ip_stat = IPHTSearch(ht, saddr))) {// not in hashtable
-		return 1;
+		return 3;
 	}
 	cur_ip_stat->pps++;
 	cur_ip_stat->send_packet_sum++;
 
 	if(is_attacking){
-		if(cur_ip_stat->pps>500){
+		if(cur_ip_stat->pps>10000&&!cur_ip_stat->priority==0){
 			cur_ip_stat->priority=0;
 			return -10;
 		}
-		if(is_attacking==1){
-			switch(cur_ip_stat->priority){
-				case 4://0%
-					return 1;
-				case 3://20%
-					return rand()%10+1<=10?1:-3;
-				case 2://40%
-					return rand()%10+1<=9?1:-2;
-				case 1://60%
-					return rand()%10+1<=5?1:-1;
-				case 0://100%
-					return 0;
-			}
-		}else{
-			switch(cur_ip_stat->priority){
-				case 4://0%
-					return rand()%10+1<=9?1:-1*cur_ip_stat->send_packet_sum;
-				case 3://20%
-					return rand()%10+1<=7?1:-1*cur_ip_stat->send_packet_sum;
-				case 2://40%
-					return rand()%10+1<=4?1:-1*cur_ip_stat->send_packet_sum;
-				case 1://60%
-					return rand()%10+1<=2?1:-1;
-				case 0://100%
-					return 0;
-			}
+		switch(cur_ip_stat->priority){
+			case 4://0%
+				return 1;
+			case 3://20%
+				return 1;
+			case 2://10%
+				return rand()%10+1<=9?1:-2;
+			case 1://60%
+				return rand()%10+1<=8?1:-1;
+			case 0://100%
+				return rand()%10+1<=5?1:-0;
 		}
+
 
 	}else{
 		return 1;
@@ -193,8 +181,6 @@ ip_statistic* CreateIPStat(mtcp_manager_t mtcp, uint32_t ip){
 }
 void AddedPacketStatistics(mtcp_manager_t mtcp, struct ip_hashtable *ht,uint32_t saddr,int ip_len){
 	ip_statistic *cur_ip_stat = NULL;
-	ip_statistic ip_stat;
-	ip_stat.ip = saddr;
 	if (!(cur_ip_stat = IPHTSearch(ht, saddr))) {
 		TRACE_INFO("create ip stat");
 		cur_ip_stat = CreateIPStat(mtcp,saddr);
@@ -203,7 +189,6 @@ void AddedPacketStatistics(mtcp_manager_t mtcp, struct ip_hashtable *ht,uint32_t
 	cur_ip_stat->packet_recv_num++;
 
 	if(cur_ip_stat->pps>ATTACKER_TH_1){
-		printf("whyyyyyyyyyyyyyyyyyyyyyyyyyy");
 		if(cur_ip_stat->pps>ATTACKER_TH_2){
 			cur_ip_stat->priority=0;
 			TRACE_INFO("fast drop");
@@ -217,19 +202,22 @@ void get_p_list(struct ip_hashtable *ht,int p_list[5]){
 
 	for (int i = 0; i < ht->bins; i++){
 		TAILQ_FOREACH(walk, &ht->ht_table[i], links) {
-			p_list[walk->priority]++;
+			if(walk->send_packet_sum>0){
+				p_list[walk->priority]++;
+
+			}
 		}
 	}
 
 }
 int get_average(struct ip_hashtable *ht, statistic *stat_ave){
-	uint8_t valid_ips=0;
+	uint32_t valid_ips=0;
 	ip_statistic *walk;
 	stat_ave->packet_recv_num=0;
 	for (int i = 0; i < ht->bins; i++){
 		TAILQ_FOREACH(walk, &ht->ht_table[i], links) {
-			valid_ips++;
-			if(walk->send_packet_sum>=0){
+			if(walk->send_packet_sum>0){
+				valid_ips++;
 				stat_ave->packet_recv_num+=walk->packet_recv_num;
 
 			}
@@ -306,11 +294,13 @@ void update_priority(struct ip_hashtable *ht, statistic stat_ave, statistic stat
 	TRACE_INFO("average is %d, dispression is %d",stat_ave.packet_recv_num,stat_dis.packet_recv_num);
 	for (int i = 0; i < ht->bins; i++){
 		TAILQ_FOREACH(walk, &ht->ht_table[i], links) {
-			if(walk->send_packet_sum > MIN(THROUGHPUT_TH,stat_ave.packet_recv_num+stat_dis.packet_recv_num)){
+			if(walk->packet_recv_num > MIN(THROUGHPUT_TH,stat_ave.packet_recv_num+stat_dis.packet_recv_num*2)){
+				walk->priority=0;
+			}else if(walk->packet_recv_num > MIN(THROUGHPUT_TH,stat_ave.packet_recv_num+stat_dis.packet_recv_num)){
 				if(walk->priority>0){
 					walk->priority--;
 				}
-			}else if(walk->send_packet_sum<stat_ave.packet_recv_num){
+			}else if(walk->packet_recv_num<stat_ave.packet_recv_num){
 				if(walk->priority<MAX_PRIORITY){
 					walk->priority++;
 				}
