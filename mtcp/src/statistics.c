@@ -297,9 +297,7 @@ void update_priority(struct ip_hashtable *ht, statistic stat_ave, statistic stat
 			if(walk->packet_recv_num > MIN(THROUGHPUT_TH,stat_ave.packet_recv_num+stat_dis.packet_recv_num*2)){
 				walk->priority=0;
 			}else if(walk->packet_recv_num > MIN(THROUGHPUT_TH,stat_ave.packet_recv_num+stat_dis.packet_recv_num)){
-				if(walk->priority>0){
-					walk->priority--;
-				}
+				walk->priority=walk->priority-2>=0?walk->priority-2:0;
 			}else if(walk->packet_recv_num<stat_ave.packet_recv_num){
 				if(walk->priority<MAX_PRIORITY){
 					walk->priority++;

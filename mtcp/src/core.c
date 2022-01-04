@@ -788,6 +788,7 @@ InterruptApplication(mtcp_manager_t mtcp)
 	}
 }
 //for debug function
+#if defined(USE_DDOSPROT)
 
 static inline void
 print_stat(mtcp_manager_t mtcp,struct ip_hashtable *ht){
@@ -799,6 +800,7 @@ print_stat(mtcp_manager_t mtcp,struct ip_hashtable *ht){
 	}
 	TRACE_DBG("\n");
 }
+#endif
 /*----------------------------------------------------------------------------*/
 static void 
 RunMainLoop(struct mtcp_thread_context *ctx)
